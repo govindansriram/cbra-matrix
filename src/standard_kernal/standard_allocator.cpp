@@ -17,7 +17,7 @@ namespace cobraml::core {
         return std::calloc(bytes, 1);
     }
 
-    void StandardAllocator::mem_copy(void *dest, void *source, std::size_t bytes, bool overlap) {
+    void StandardAllocator::mem_copy(void *dest, const void *source, std::size_t const bytes, bool const overlap) {
         if (overlap) {
             std::memmove(dest, source, bytes);
             return;

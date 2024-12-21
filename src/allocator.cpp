@@ -3,6 +3,7 @@
 //
 
 #include "allocator.h"
+#include <iostream>
 #include "standard_allocator.h"
 
 namespace cobraml::core {
@@ -16,8 +17,14 @@ namespace cobraml::core {
     }
 
     Buffer::Buffer(size_t const bytes, Device const device)
-        : p_allocator(get_allocator(device)), device(device) {
+        :  p_allocator(get_allocator(device)), device(device) {
         p_buffer = p_allocator->calloc(bytes);
+    }
+
+    Buffer::Buffer(size_t const bytes, Device const device, const void * source)
+    :  p_allocator(get_allocator(device)), device(device) {
+        p_buffer = p_allocator->malloc(bytes);
+        p_allocator->mem_copy(p_buffer, source, bytes, false);
     }
 
     Buffer::~Buffer() {

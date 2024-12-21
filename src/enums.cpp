@@ -9,7 +9,25 @@ namespace cobraml::core {
         return type == FLOAT32 || type == FLOAT64;
     }
 
+    std::string dtype_to_string(Dtype const dtype) {
+        switch (dtype) {
+            case INT8: return "INT8";
+            case INT16: return "INT16";
+            case INT32: return "INT32";
+            case INT64: return "INT64";
+            case FLOAT32: return "FLOAT32";
+            case FLOAT64: return "FLOAT64";
+            case INVALID: return "INVALID";
+        }
+
+        return "";
+    }
+
     bool operator<(Dtype const lhs, Dtype const rhs) {
+
+        is_invalid(lhs);
+        is_invalid(rhs);
+
         bool const l_if = is_float(lhs);
         bool const r_if = is_float(rhs);
 

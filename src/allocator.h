@@ -15,7 +15,7 @@ namespace cobraml::core {
         virtual ~Allocator() = default;
         virtual void *malloc(std::size_t bytes) = 0;
         virtual void *calloc(std::size_t bytes) = 0;
-        virtual void mem_copy(void *dest, void *source, std::size_t bytes, bool overlap) = 0;
+        virtual void mem_copy(void *dest, const void *source, std::size_t bytes, bool overlap) = 0;
         virtual void free(void *ptr) = 0;
     };
 
@@ -24,15 +24,18 @@ namespace cobraml::core {
     Allocator * get_allocator(Device device);
 
     class Buffer {
-        void * p_buffer;
+        void * p_buffer = nullptr;
         Allocator * p_allocator;
         Device device;
 
     public:
         Buffer() = delete;
         explicit Buffer(size_t bytes, Device device);
+        explicit Buffer(size_t bytes, Device device, const void * source);
         ~Buffer();
         [[nodiscard]] void * get_p_buffer() const;
+        Buffer(Buffer&) = delete;
+        Buffer& operator=(Buffer&) = delete;
     };
 }
 
