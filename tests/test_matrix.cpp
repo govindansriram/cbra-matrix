@@ -9,6 +9,7 @@
 
 class MatrixTest : public testing::Test {
 protected:
+
     cobraml::core::Matrix m1{};
     cobraml::core::Matrix m2;
 
@@ -21,13 +22,21 @@ protected:
         };
 
         m1 = cobraml::core::from_vector<int>(mat, cobraml::core::CPU);
-        m1.print();
-        m2.print();
     }
 
     // ~QueueTest() override = default;
 };
 
-TEST_F(MatrixTest, vector_init) {
-    ASSERT_EQ(m1.get_dtype(), cobraml::core::INT32);
+TEST_F(MatrixTest, test_meta_data) {
+    ASSERT_EQ(m2.get_dtype(), cobraml::core::INT8);
+    const auto [rows, columns] = m2.get_shape();
+    ASSERT_EQ(columns, 1);
+    ASSERT_EQ(rows, 23);
+    ASSERT_EQ(m2.get_device(), cobraml::core::CPU);
+}
+
+TEST(MatrixTestFunc, test_invalid_constructor) {
+    ASSERT_THROW(
+        cobraml::core::Matrix mat(10, 20, cobraml::core::CPU, cobraml::core::INVALID),
+        std::runtime_error);
 }

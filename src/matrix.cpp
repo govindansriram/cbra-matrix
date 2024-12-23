@@ -41,6 +41,18 @@ namespace cobraml::core {
         return this->impl->dtype;
     }
 
+    Device Matrix::get_device() const {
+        return this->impl->device;
+    }
+
+    Matrix::Shape Matrix::get_shape() const {
+        Shape sh{};
+        sh.columns = impl->columns;
+        sh.rows = impl->rows;
+        return sh;
+    }
+
+
     Matrix::~Matrix() = default;
 
     void *Matrix::get_raw_buffer() const {

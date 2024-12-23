@@ -33,6 +33,11 @@ namespace cobraml::core {
         void replace_segment(const void * source, size_t offset, size_t bytes) const;
 
     public:
+        struct Shape {
+            size_t rows;
+            size_t columns;
+        };
+
         /**
          * constructor that creates a zero matrix of shape (rows, columns)
          * @param rows the # of rows in the matrix
@@ -50,6 +55,16 @@ namespace cobraml::core {
          * @return the dtype of the matrix
          */
         [[nodiscard]] Dtype get_dtype() const;
+
+        /**
+        * @return the Device of the matrix
+        */
+        [[nodiscard]] Device get_device() const;
+
+        /**
+        * @return the shape of the matrix
+        */
+        [[nodiscard]] Shape get_shape() const;
 
         /**
          * provides access to the underlying matrix buffer in row major format
@@ -72,7 +87,7 @@ namespace cobraml::core {
          */
 
         /**
-         * computes the batche dot product between a singular vector shape (1, N) and matrix of shape (M, N)
+         * computes the batched dot product between a singular vector shape (1, N) and matrix of shape (M, N)
          * @return
          */
         friend size_t batched_dot_product(Matrix &matrix, Matrix &vector);

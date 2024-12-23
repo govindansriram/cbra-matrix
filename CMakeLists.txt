@@ -74,13 +74,23 @@ if(ENABLE_TESTING)
     FetchContent_MakeAvailable(googletest)
 
     add_executable(test_matrix tests/test_matrix.cpp)
+    add_executable(test_enums tests/test_enums.cpp)
+
     include(GoogleTest)
-    gtest_discover_tests(test_matrix)
+    gtest_discover_tests(test_matrix test_enums)
 
     target_compile_options(test_matrix PRIVATE ${COMMON_COMPILE_OPTIONS})
+    target_compile_options(test_enums PRIVATE ${COMMON_COMPILE_OPTIONS})
 
     target_link_libraries(
             test_matrix
+            GTest::gtest_main
+            CmlContentBasedFiltering
+            TBB::tbb
+    )
+
+    target_link_libraries(
+            test_enums
             GTest::gtest_main
             CmlContentBasedFiltering
             TBB::tbb
