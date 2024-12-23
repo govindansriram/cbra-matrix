@@ -5,10 +5,12 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
-#include <iostream>
 #include <memory>
 #include <vector>
+#include <sys/stat.h>
+
 #include "enums.h"
+#include "iostream"
 
 namespace cobraml::core {
     class Matrix {
@@ -23,16 +25,12 @@ namespace cobraml::core {
         [[nodiscard]] void *get_raw_buffer() const;
 
         /**
-         * private constructor that allows initialization of a matrix
-         * from an existing buffer of data. This buffer must be on the cpu.
-         *
-         * @param rows the # of rows in the matrix
-         * @param columns the # of columns in the matrix
-         * @param device the device of the matrix being constructed
-         * @param dtype the dtype of the matrix being constructed
-         * @param p_data the data that will be copied
+         * replace a segment of the matrix buffer with a different buffer
+         * @param source
+         * @param offset
+         * @param bytes
          */
-        Matrix(size_t rows, size_t columns, Device device, Dtype dtype, const void *p_data);
+        void replace_segment(const void * source, size_t offset, size_t bytes) const;
 
     public:
         /**
@@ -59,7 +57,7 @@ namespace cobraml::core {
          * @return the raw ptr buffer
          */
         template<typename T>
-        T *get_buffer();
+        const T *get_buffer();
 
         /**
          * prints the contents of the matrix in tabular format
@@ -90,6 +88,7 @@ namespace cobraml::core {
 
         const size_t rows{mat.size()};
         const size_t columns{mat[0].size()};
+        constexpr unsigned char data_size{dtype_to_bytes(dtype)};
 
         for (const std::vector<T> &row: mat) {
             if (row.size() != columns) {
@@ -97,11 +96,21 @@ namespace cobraml::core {
             }
         }
 
-        return Matrix(rows, columns, device, dtype, mat.data());
+        Matrix ret(rows, columns, device, dtype);
+
+        size_t count{0};
+        const size_t copy_amount{data_size * columns};
+
+        for (const std::vector<T> &row: mat) {
+            ret.replace_segment(row.data(), count * columns * data_size, copy_amount);
+            ++count;
+        }
+
+        return ret;
     }
 
     template<typename T>
-    T *Matrix::get_buffer() {
+    const T *Matrix::get_buffer() {
         const Dtype current{get_dtype()};
         if (constexpr Dtype given = get_dtype_from_type<T>::type; given != current) {
             throw std::runtime_error(

@@ -31,6 +31,11 @@ services:
         read_only: false
 
       - type: bind
+        source: ./lib
+        target: /home/lib
+        read_only: false
+
+      - type: bind
         source: ./build.sh
         target: /home/build.sh
         read_only: true

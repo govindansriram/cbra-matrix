@@ -41,6 +41,7 @@ namespace cobraml::core {
     }
 
     std::string dtype_to_string(Dtype dtype);
+    std::string device_to_string(Device device);
 
     inline void is_invalid(Dtype const dtype) {
         if (dtype == INVALID)

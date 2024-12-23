@@ -15,7 +15,7 @@ namespace cobraml::core {
         virtual ~Allocator() = default;
         virtual void *malloc(std::size_t bytes) = 0;
         virtual void *calloc(std::size_t bytes) = 0;
-        virtual void mem_copy(void *dest, const void *source, std::size_t bytes, bool overlap) = 0;
+        virtual void mem_copy(void *dest, const void *source, std::size_t bytes) = 0;
         virtual void free(void *ptr) = 0;
     };
 
@@ -31,11 +31,18 @@ namespace cobraml::core {
     public:
         Buffer() = delete;
         explicit Buffer(size_t bytes, Device device);
-        explicit Buffer(size_t bytes, Device device, const void * source);
         ~Buffer();
         [[nodiscard]] void * get_p_buffer() const;
         Buffer(Buffer&) = delete;
         Buffer& operator=(Buffer&) = delete;
+
+        /**
+         * overwrite a segment of the buffer with new data
+         * @param source the new data
+         * @param byte_count how many bytes to replace
+         * @param offset the starting position to start overwriting in the original buffer
+         */
+        void overwrite(const void * source, size_t byte_count, size_t offset = 0) const;
     };
 }
 

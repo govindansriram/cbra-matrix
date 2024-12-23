@@ -23,6 +23,17 @@ namespace cobraml::core {
         return "";
     }
 
+    std::string device_to_string(Device device) {
+        switch (device) {
+            case CPU: return "CPU";
+            case GPU: return "GPU";
+            case CPU_X: return "CPU Accelerated";
+        }
+
+        return "";
+    }
+
+
     bool operator<(Dtype const lhs, Dtype const rhs) {
 
         is_invalid(lhs);
