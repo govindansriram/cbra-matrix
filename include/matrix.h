@@ -97,10 +97,6 @@ namespace cobraml::core {
             }
         }
 
-        // change this up
-
-        std::cout << "byte: " << *static_cast<const int *>(mat.data()) << '\n';
-
         return Matrix(rows, columns, device, dtype, mat.data());
     }
 
