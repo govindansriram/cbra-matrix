@@ -4,7 +4,7 @@
 
 #include "standard_math.h"
 
-// #include <iostream>
+#include <iostream>
 
 #include "enums.h"
 #include "oneapi/tbb/parallel_for.h"
@@ -89,6 +89,7 @@ namespace cobraml::core {
         size_t start{0};
 
         tbb::parallel_for(start, rows, [&](size_t const row) {
+            // std::cout << "Processing on thread: " << tbb::this_task_arena::current_thread_index() << "\n";
             char *p_dest = c_dest + (jump * row);
             const char *vector1 = c_mat + (row * row_jump);
             type_insensitive_dot_product(vector1, c_vec, p_dest, dtype, columns);
@@ -104,11 +105,11 @@ namespace cobraml::core {
         Dtype dtype) {
 
         switch (func_pos) {
-            case 1: {
+            case 0: {
                 batched_dot_product_naive(matrix, vector, dest, rows, columns, dtype);
                 return;
             }
-            case 2: {
+            case 1: {
                 batched_dot_product_parallel(matrix, vector, dest, rows, columns, dtype);
                 return;
             }

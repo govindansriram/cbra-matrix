@@ -121,7 +121,7 @@ else ()
 
     target_compile_options(CmlContentBasedFiltering PRIVATE ${COMMON_COMPILE_OPTIONS})
 
-    add_definitions(-DBENCHMARK)
+    add_definitions(-DBENCHMARK=1)
 
     add_executable(benchmark_matrix benchmarks/benchmark_matrix.cpp)
 
