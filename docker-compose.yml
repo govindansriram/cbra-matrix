@@ -4,6 +4,11 @@ services:
   cbf:
     image: cbf
     container_name: cbf-dev
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
     volumes:
       - type: bind
         source: ./src
@@ -24,11 +29,6 @@ services:
         source: ./include
         target: /home/include
         read_only: true
-
-      - type: bind
-        source: ./logs
-        target: /home/logs
-        read_only: false
 
       - type: bind
         source: ./lib

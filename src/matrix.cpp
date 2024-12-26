@@ -9,6 +9,7 @@
 #include <memory>
 #include "allocator.h"
 #include "enums.h"
+#include "math_dis.h"
 
 namespace cobraml::core {
     struct Matrix::MatrixImpl {
@@ -17,15 +18,19 @@ namespace cobraml::core {
         Device device = CPU;
         Dtype dtype = INVALID;
         std::shared_ptr<Buffer> buffer = nullptr;
+        Math * m_dispatcher = nullptr;
 
         MatrixImpl(size_t const rows, size_t const columns, Device const device, Dtype const type): rows(rows),
             columns(columns),
             device(device),
             dtype(type),
-            buffer(std::make_shared<Buffer>(rows * columns * dtype_to_bytes(type), device)) {
+            buffer(std::make_shared<Buffer>(rows * columns * dtype_to_bytes(type), device)),
+            m_dispatcher(get_math_kernels(device)) {
         }
 
         MatrixImpl() = default;
+        MatrixImpl(const MatrixImpl&) = default;
+        MatrixImpl& operator=(const MatrixImpl&) = default;
 
         [[nodiscard]] void *get_raw_buffer() const {
             return buffer->get_p_buffer();
@@ -103,6 +108,7 @@ namespace cobraml::core {
             impl->dtype = other.impl->dtype;
             impl->device = other.impl->device;
             impl->buffer = other.impl->buffer;
+            impl->m_dispatcher = other.impl->m_dispatcher;
         }
 
         return *this;
@@ -113,9 +119,35 @@ namespace cobraml::core {
     }
 
 
-    // size_t batched_dot_product(Matrix &matrix, Matrix &vector) {
-    //     return matrix.impl->columns;
-    // }
+    Matrix batched_dot_product(const Matrix &matrix, const Matrix &vector) {
+        if (vector.impl->rows != 1) {
+            throw std::runtime_error("vector is a matrix");
+        }
+
+        if (matrix.impl->columns != vector.impl->columns) {
+            throw std::runtime_error("vector and matrix have different columns lengths");
+        }
+
+        if (matrix.impl->device != vector.impl->device) {
+            throw std::runtime_error("vector and matrix are on different devices");
+        }
+
+        if (matrix.impl->dtype != vector.impl->dtype) {
+            throw std::runtime_error("vector and matrix do not share the same dtype");
+        }
+
+        Matrix ret(matrix.impl->rows, 1, matrix.impl->device, matrix.impl->dtype);
+
+        ret.impl->m_dispatcher->batched_dot_product(
+            matrix.get_raw_buffer(),
+            vector.get_raw_buffer(),
+            ret.get_raw_buffer(),
+            matrix.impl->rows,
+            matrix.impl->columns,
+            matrix.impl->dtype);
+
+        return ret;
+    }
 
     void print_details(Device const device, Dtype const dtype, size_t const rows, size_t const columns) {
         std::cout << "############## Details ##############\n";

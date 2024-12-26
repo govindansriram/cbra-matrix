@@ -40,6 +40,8 @@ namespace cobraml::core {
         return 0;
     }
 
+    extern unsigned char func_pos;
+
     std::string dtype_to_string(Dtype dtype);
     std::string device_to_string(Device device);
 

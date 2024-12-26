@@ -56,4 +56,7 @@ namespace cobraml::core {
 
         return false;
     }
+
+    unsigned char func_pos = 0;
+
 }

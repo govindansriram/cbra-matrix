@@ -90,7 +90,7 @@ namespace cobraml::core {
          * computes the batched dot product between a singular vector shape (1, N) and matrix of shape (M, N)
          * @return
          */
-        friend size_t batched_dot_product(Matrix &matrix, Matrix &vector);
+        friend Matrix batched_dot_product(const Matrix &matrix, const Matrix &vector);
 
         template<typename T>
         friend Matrix from_vector(const std::vector<std::vector<T>> &mat, Device device);

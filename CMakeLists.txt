@@ -9,14 +9,16 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 set(SOURCES
         include/matrix.h
         src/allocator.h
-        src/math_dispatcher.h
-        src/standard_kernal/standard_allocator.h
-        src/standard_kernal/standard_allocator.cpp
+        src/math_dis.h
+        src/standard_kernel/standard_allocator.h
+        src/standard_kernel/standard_allocator.cpp
         src/allocator.cpp
-        src/standard_kernal/math.h
+        src/standard_kernel/standard_math.h
+        src/standard_kernel/standard_math.cpp
         src/matrix.cpp
         src/enums.cpp
         include/enums.h
+        src/math_dis.cpp
 )
 
 list(APPEND CMAKE_PREFIX_PATH "/opt/intel/oneapi/tbb/latest/lib/cmake") # path to intel onetbb
@@ -26,7 +28,7 @@ add_library(CmlContentBasedFiltering SHARED ${SOURCES})
 # Include directories for public headers
 target_include_directories(CmlContentBasedFiltering PUBLIC include)
 
-target_include_directories(CmlContentBasedFiltering PRIVATE src/standard_kernal)
+target_include_directories(CmlContentBasedFiltering PRIVATE src/standard_kernel)
 
 # Define install rules
 install(TARGETS CmlContentBasedFiltering
@@ -44,7 +46,7 @@ target_link_libraries(CmlContentBasedFiltering PUBLIC TBB::tbb)
 ## Specify the include directory where your header files are located
 
 option(ENABLE_TESTING "Enable testing-specific compile options" ON)
-option(IS_NAIVE "Enable testing-specific compile options" OFF)
+option(IS_THREAD "Test for thread related issues" OFF)
 
 if(ENABLE_TESTING)
 
@@ -63,6 +65,14 @@ if(ENABLE_TESTING)
     target_compile_options(CmlContentBasedFiltering PRIVATE ${COMMON_COMPILE_OPTIONS})
 
     enable_testing()
+
+    if (IS_THREAD)
+        list(APPEND COMMON_COMPILE_OPTIONS -fsanitize=thread -fno-omit-frame-pointer -g)
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread -fno-omit-frame-pointer -g")
+    else()
+        list(APPEND COMMON_COMPILE_OPTIONS -fsanitize=address)
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g")
+    endif ()
 
     include(FetchContent)
     FetchContent_Declare(
@@ -111,9 +121,7 @@ else ()
 
     target_compile_options(CmlContentBasedFiltering PRIVATE ${COMMON_COMPILE_OPTIONS})
 
-    if(IS_NAIVE)
-        add_definitions(-DNAIVE)
-    endif ()
+    add_definitions(-DBENCHMARK)
 
     add_executable(benchmark_matrix benchmarks/benchmark_matrix.cpp)
 

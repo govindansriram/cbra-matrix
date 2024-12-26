@@ -12,4 +12,4 @@ else
     docker compose up -d
 fi
 
-docker exec $CONTAINER_NAME /bin/bash -c "cd /home && ./build.sh"
+docker exec $CONTAINER_NAME /bin/bash -c "cd /home && ./build.sh $@"

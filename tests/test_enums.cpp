@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include "../src/allocator.h"
+#include "enums.h"
 
 TEST(DTYPE, validity) {
     ASSERT_THROW(cobraml::core::INVALID < cobraml::core::INT8, std::runtime_error);

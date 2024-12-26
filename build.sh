@@ -5,29 +5,29 @@ set -e
 BUILD_DIR="build"
 LIB_DIR="lib"
 LOG_DIR="logs"
+BENCHMARK=false
+THREAD_SANITIZE=false
 
-
-# Function to process a single valgrind log file
-process_valgrind_log() {
-    local file=$1
-    echo
-    echo "Analyzing: $file"
-    echo "----------------------------------------"
-
-    awk '/HEAP SUMMARY:/ { print; found=1 } found { print }' "$file"
+# Function to display usage
+usage() {
+    echo "Usage: $0 [-t THREAD_SANITIZE] [-b BENCHMARK]"
+    echo "  -b      benchmark mode"
+    echo "  -t      test with threads"
+    exit 1
 }
+
+while getopts "bt" opt; do
+    case $opt in
+        b) BENCHMARK=true ;;
+        t) THREAD_SANITIZE=true ;;
+    esac
+done
 
 # Check if the build directory exists
 if [ ! -d "$BUILD_DIR" ]; then
     echo "Creating $BUILD_DIR directory..."
     mkdir "$BUILD_DIR"
 fi
-
-## Check if the build directory exists
-#if [ ! -d "$LIB_DIR" ]; then
-#    echo "Creating $LIB_DIR directory..."
-#    mkdir "$LIB_DIR"
-#fi
 
 if [ ! -d "$LOG_DIR" ]; then
     echo "Creating $LOG_DIR directory..."
@@ -36,7 +36,18 @@ fi
 
 cd "$BUILD_DIR" || exit
 
-cmake ..
+if [ "$BENCHMARK" = true ]; then
+    echo "Running benchmarks"
+    cmake -DENABLE_TESTING=OFF ..
+else
+    if [ "$THREAD_SANITIZE" = true ]; then
+      echo "Running thread sanitization"
+      cmake -DENABLE_TESTING=ON -DIS_THREAD=ON ..
+    else
+      echo "Running address sanitization"
+      cmake -DENABLE_TESTING=ON -DIS_THREAD=OFF ..
+    fi
+fi
 
 make
 
@@ -51,11 +62,7 @@ for test_executable in test*; do
         echo "----------------------------------------------------"
         echo
 
-        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
-                 --verbose --log-file="../$LOG_DIR/$test_executable.valgrind.txt" ./"$test_executable"
-
-        process_valgrind_log "../$LOG_DIR/$test_executable.valgrind.txt"
-
+        ./"$test_executable"
         echo
     fi
 done
