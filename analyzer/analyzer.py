@@ -2,6 +2,22 @@ import os.path
 import pandas as pd
 import json
 
+class GraphPipeline:
+
+    def __init__(self, filename: str):
+        self._filepath = os.path.join(base_path(), filename)
+
+    @staticmethod
+    def drop_columns(df: pd.DataFrame, columns: list[str]):
+        df.drop(columns=columns, inplace=True)
+
+    def pipeline(self):
+        with open(self._filepath, "r") as f:
+            report = json.load(f)
+
+        df = pd.DataFrame(data=report["benchmarks"])
+
+
 def base_path() -> str:
     current_file_path = __file__
     head, _ = os.path.split(current_file_path)
