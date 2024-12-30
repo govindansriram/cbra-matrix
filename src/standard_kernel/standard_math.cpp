@@ -3,12 +3,8 @@
 //
 
 #include "standard_math.h"
-
-// #include <iostream>
-
 #include "enums.h"
 #include "oneapi/tbb/parallel_for.h"
-// #include "oneapi/tbb/global_control.h"
 
 namespace cobraml::core {
     void type_insensitive_dot_product(
@@ -19,7 +15,7 @@ namespace cobraml::core {
         size_t const len) {
         switch (dtype) {
             case FLOAT64: {
-                auto casted_dest = static_cast<double *>(dest);
+                const auto casted_dest = static_cast<double *>(dest);
                 *casted_dest = dot_product<double>(vec1, vec2, len);
                 return;
             }
@@ -29,22 +25,22 @@ namespace cobraml::core {
                 return;
             }
             case INT8: {
-                auto casted_dest = static_cast<int8_t *>(dest);
+                const auto casted_dest = static_cast<int8_t *>(dest);
                 *casted_dest = dot_product<int8_t>(vec1, vec2, len);
                 return;
             }
             case INT16: {
-                auto casted_dest = static_cast<int16_t *>(dest);
+                const auto casted_dest = static_cast<int16_t *>(dest);
                 *casted_dest = dot_product<int16_t>(vec1, vec2, len);
                 return;
             }
             case INT32: {
-                auto casted_dest = static_cast<int32_t *>(dest);
+                const auto casted_dest = static_cast<int32_t *>(dest);
                 *casted_dest = dot_product<int32_t>(vec1, vec2, len);
                 return;
             }
             case INT64: {
-                auto casted_dest = static_cast<int64_t *>(dest);
+                const auto casted_dest = static_cast<int64_t *>(dest);
                 *casted_dest = dot_product<int64_t>(vec1, vec2, len);
                 return;
             }
@@ -63,11 +59,11 @@ namespace cobraml::core {
         size_t const columns,
         Dtype const dtype){
 
-        size_t jump{dtype_to_bytes(dtype)};
+        const size_t jump{dtype_to_bytes(dtype)};
         auto char_dest{static_cast<char *>(dest)};
 
         for (size_t i = 0; i < rows; ++i) {
-            auto vec1 = static_cast<const char *>(matrix) + (jump * i * columns);
+            const auto vec1 = static_cast<const char *>(matrix) + (jump * i * columns);
             type_insensitive_dot_product(vec1, vector, char_dest, dtype, columns);
             char_dest += jump;
         }
@@ -77,16 +73,16 @@ namespace cobraml::core {
         const void *matrix,
         const void *vector,
         void *dest,
-        size_t rows,
-        size_t columns,
-        Dtype dtype) {
+        const size_t rows,
+        const size_t columns,
+        const Dtype dtype) {
 
-        size_t jump{dtype_to_bytes(dtype)};
-        size_t row_jump{columns * jump};
-        auto c_dest = static_cast<char *>(dest);
-        auto c_mat = static_cast<const char *>(matrix);
-        auto c_vec = static_cast<const char *>(vector);
-        size_t start{0};
+        const size_t jump{dtype_to_bytes(dtype)};
+        const size_t row_jump{columns * jump};
+        const auto c_dest = static_cast<char *>(dest);
+        const auto c_mat = static_cast<const char *>(matrix);
+        const auto c_vec = static_cast<const char *>(vector);
+        constexpr size_t start{0};
 
         tbb::parallel_for(start, rows, [&](size_t const row) {
             char *p_dest = c_dest + (jump * row);
@@ -99,16 +95,16 @@ namespace cobraml::core {
         const void *matrix,
         const void *vector,
         void *dest,
-        size_t rows,
-        size_t columns,
-        Dtype dtype) {
+        const size_t rows,
+        const size_t columns,
+        const Dtype dtype) {
 
         switch (func_pos) {
-            case 1: {
+            case 0: {
                 batched_dot_product_naive(matrix, vector, dest, rows, columns, dtype);
                 return;
             }
-            case 2: {
+            case 1: {
                 batched_dot_product_parallel(matrix, vector, dest, rows, columns, dtype);
                 return;
             }

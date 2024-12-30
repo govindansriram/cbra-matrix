@@ -55,14 +55,25 @@ echo
 echo "finished build"
 echo
 
-for test_executable in test*; do
+if $BENCHMARK; then
+    pattern="benchmark*"
+else
+    pattern="test*"
+fi
+
+for exe in $pattern; do
     # Check if it's an executable file
-    if [ -x "$test_executable" ] && [ ! -d "$test_executable" ]; then
-        echo "Running $test_executable..."
+    if [ -x "$exe" ] && [ ! -d "$exe" ]; then
+        echo "Running $exe..."
         echo "----------------------------------------------------"
         echo
 
-        ./"$test_executable"
+        if $BENCHMARK; then
+            ./"$exe" --benchmark_counters_tabular=true --benchmark_format=console --benchmark_out=../benchmarks/reports/"$exe".json
+        else
+            ./"$exe"
+        fi
+
         echo
     fi
 done
