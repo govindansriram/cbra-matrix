@@ -7,3 +7,4 @@ lib
 .idea
 reports
 .venv
+__pycache__/

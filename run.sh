@@ -12,4 +12,9 @@ else
     docker compose up -d
 fi
 
+if [[ "$(uname -s)" == "Linux" ]]; then
+    echo "Running on Linux. Setting CPU governor to 'performance'..."
+    sudo cpupower frequency-set --governor performance
+fi
+
 docker exec $CONTAINER_NAME /bin/bash -c "cd /home && ./build.sh $@"
