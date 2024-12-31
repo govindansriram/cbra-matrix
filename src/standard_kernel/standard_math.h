@@ -5,6 +5,9 @@
 #ifndef STANDARD_MATH_H
 #define STANDARD_MATH_H
 
+#include <iostream>
+#include <ostream>
+
 #include "../math_dis.h"
 namespace cobraml::core {
 
@@ -17,6 +20,21 @@ namespace cobraml::core {
         NumType sum{0};
         for (size_t i = 0; i < len; ++i) {
             sum += static_cast<NumType>(vec1[i] * vec2[i]);
+        }
+
+        // std::cout << sum << std::endl;
+
+        return sum;
+    }
+
+    template<typename NumType>
+    NumType sum(const void * vector, size_t const len) {
+
+        auto vec = static_cast<const NumType *>(vector);
+        NumType sum{0};
+
+        for (size_t i = 0; i < len; ++i) {
+            sum += vec[i];
         }
 
         return sum;
