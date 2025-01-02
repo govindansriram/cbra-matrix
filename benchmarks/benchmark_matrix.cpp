@@ -28,41 +28,53 @@ namespace {
     };
 
     BENCHMARK_DEFINE_F(CPUFixture, BatchedDotProduct)(benchmark::State &st) {
-        size_t const size = st.range(0);
-        size_t const pos = st.range(1);
+        size_t const rows = st.range(0);
+        size_t const col = st.range(1);
+        size_t const pos = st.range(2);
 
         cobraml::core::func_pos = pos;
         cobraml::core::Matrix const mat = from_vector(
-            create_vector(size, size), cobraml::core::CPU);
+            create_vector(rows, col), cobraml::core::CPU);
 
         cobraml::core::Matrix const vec = from_vector(
-            create_vector(1, size), cobraml::core::CPU);
+            create_vector(1, col), cobraml::core::CPU);
 
         for (auto _: st) {
             batched_dot_product(mat, vec);
         }
 
-        st.counters["rows"] = size;
-        st.counters["columns"] = size;
+        st.counters["rows"] = rows;
+        st.counters["columns"] = col;
         st.counters["type"] = pos;
     }
 
     BENCHMARK_REGISTER_F(CPUFixture, BatchedDotProduct)
-    // ->Args({100, 0})
-    // ->Args({500, 0})
-    // ->Args({1000, 0})
-    // ->Args({3000, 0})
-    ->Args({5000, 0})
-    // ->Args({100, 1})
-    // ->Args({500, 1})
-    // ->Args({1000, 1})
-    // ->Args({3000, 1})
-    ->Args({5000, 1})
-    ->Args({100, 2})
-    ->Args({500, 2})
-    ->Args({1000, 2})
-    ->Args({3000, 2})
-    ->Args({5000, 2})
+    // ->Args({1000, 1000000, 0})
+    ->Args({100, 100, 0})
+    ->Args({500, 500, 0})
+    ->Args({1000, 1000, 0})
+    ->Args({3000, 3000, 0})
+    ->Args({5000, 5000, 0})
+    ->Args({100, 100, 1})
+    ->Args({500, 500, 1})
+    ->Args({1000, 1000, 1})
+    ->Args({3000, 3000, 1})
+    ->Args({5000, 5000, 1})
+    // ->Args({1000, 1000000, 1})
+    // ->Args({10000, 1})
+    // ->Args({15000, 1})
+    // ->Args({30000, 1})
+    // ->Args({60000, 1})
+    ->Args({100, 100, 2})
+    ->Args({500, 500, 2})
+    ->Args({1000, 1000, 2})
+    ->Args({3000, 3000, 2})
+    ->Args({5000, 5000, 2})
+    // ->Args({1000, 1000000, 2})
+    // ->Args({10000, 2})
+    // ->Args({15000, 2})
+    // ->Args({30000, 2})
+    // ->Args({60000, 2})
     ->Threads(1);
 }
 

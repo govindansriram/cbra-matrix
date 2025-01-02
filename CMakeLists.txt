@@ -111,7 +111,7 @@ else ()
     find_package(benchmark REQUIRED)
 
     set(COMMON_COMPILE_OPTIONS
-            -O3
+            -O2
             -flto
             -march=native
             -ffast-math

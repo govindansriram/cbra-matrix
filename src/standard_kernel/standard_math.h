@@ -34,6 +34,7 @@ namespace cobraml::core {
         NumType sum{0};
 
         for (size_t i = 0; i < len; ++i) {
+            // std::cout << vec[i] << std::endl;
             sum += vec[i];
         }
 
