@@ -12,9 +12,18 @@ else
     docker compose up -d
 fi
 
-if [[ "$(uname -s)" == "Linux" ]]; then
-    echo "Running on Linux. Setting CPU governor to 'performance'..."
-    sudo cpupower frequency-set --governor performance
+if [[ " $@ " =~ " -b " ]]; then
+    if [[ "$(uname -s)" == "Linux" ]]; then
+        echo "Running on Linux. Setting CPU governor to 'performance'..."
+        sudo cpupower frequency-set --governor performance > /dev/null 2>&1
+    fi
 fi
 
 docker exec $CONTAINER_NAME /bin/bash -c "cd /home && ./build.sh $@"
+
+if [[ " $@ " =~ " -b " ]]; then
+    if [[ "$(uname -s)" == "Linux" ]]; then
+        echo "Running on Linux. Setting CPU governor to 'performance'..."
+        sudo cpupower frequency-set --governor performance > /dev/null 2>&1
+    fi
+fi

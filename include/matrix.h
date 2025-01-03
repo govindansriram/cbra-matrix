@@ -67,14 +67,6 @@ namespace cobraml::core {
         [[nodiscard]] Shape get_shape() const;
 
         /**
-         * provides access to the underlying matrix buffer in row major format
-         * @tparam T the type that the ptr should be cast too, it must match the Dtype
-         * @return the raw ptr buffer
-         */
-        template<typename T>
-        const T *get_buffer();
-
-        /**
          * prints the contents of the matrix in tabular format
          * @param hide_middle hide the center elements of an array
          */
@@ -91,6 +83,14 @@ namespace cobraml::core {
          * @return
          */
         friend Matrix batched_dot_product(const Matrix &matrix, const Matrix &vector);
+
+        /**
+         * provides access to the underlying matrix buffer in row major format
+         * @tparam T the type that the ptr should be cast too, it must match the Dtype
+         * @return the raw ptr buffer
+         */
+        template<typename T>
+        friend const T *get_buffer(const Matrix &matrix);
 
         template<typename T>
         friend Matrix from_vector(const std::vector<std::vector<T>> &mat, Device device);
@@ -125,16 +125,15 @@ namespace cobraml::core {
     }
 
     template<typename T>
-    const T *Matrix::get_buffer() {
-        const Dtype current{get_dtype()};
+    const T *get_buffer(const Matrix &matrix) {
+        const Dtype current{matrix.get_dtype()};
         if (constexpr Dtype given = get_dtype_from_type<T>::type; given != current) {
             throw std::runtime_error(
                 "provided buffer type does not match matrix type: " + dtype_to_string(current));
         }
 
-        return static_cast<T *>(get_raw_buffer());
+        return static_cast<T *>(matrix.get_raw_buffer());
     }
-
 }
 
 #endif //MATRIX_H

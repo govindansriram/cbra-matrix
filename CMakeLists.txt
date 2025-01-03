@@ -39,9 +39,13 @@ install(DIRECTORY include/
         DESTINATION include
 )
 
-find_package(TBB REQUIRED)
+#find_package(TBB REQUIRED)
+#target_link_libraries(CmlContentBasedFiltering PUBLIC TBB::tbb)
 
-target_link_libraries(CmlContentBasedFiltering PUBLIC TBB::tbb)
+find_package(OpenMP REQUIRED)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(CmlContentBasedFiltering PUBLIC OpenMP::OpenMP_CXX)
+endif()
 
 ## Specify the include directory where your header files are located
 
@@ -60,6 +64,7 @@ if(ENABLE_TESTING)
             -Wconversion
             -Wsign-conversion
             -Werror
+            -fopenmp
     )
 
     target_compile_options(CmlContentBasedFiltering PRIVATE ${COMMON_COMPILE_OPTIONS})
@@ -96,14 +101,12 @@ if(ENABLE_TESTING)
             test_matrix
             GTest::gtest_main
             CmlContentBasedFiltering
-            TBB::tbb
     )
 
     target_link_libraries(
             test_enums
             GTest::gtest_main
             CmlContentBasedFiltering
-            TBB::tbb
     )
 
 else ()
@@ -111,12 +114,13 @@ else ()
     find_package(benchmark REQUIRED)
 
     set(COMMON_COMPILE_OPTIONS
-            -O3
+            -O2
             -flto
             -march=native
             -ffast-math
             -funroll-loops
             -ftree-vectorize
+            -fopenmp
     )
 
     target_compile_options(CmlContentBasedFiltering PRIVATE ${COMMON_COMPILE_OPTIONS})
@@ -131,7 +135,6 @@ else ()
             benchmark_matrix
             benchmark::benchmark
             CmlContentBasedFiltering
-            TBB::tbb
     )
 
 endif()

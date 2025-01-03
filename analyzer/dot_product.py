@@ -1,6 +1,4 @@
 from abc import ABC
-from cProfile import label
-
 import pandas as pd
 import matplotlib.pyplot as plt
 from graph import Graph
