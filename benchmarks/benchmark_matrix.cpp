@@ -29,7 +29,6 @@ namespace {
     };
 
     BENCHMARK_DEFINE_F(CPUFixture, BatchedDotProduct)(benchmark::State &st) {
-
         omp_set_num_threads(20); // Use the thread count from benchmark range
 
         size_t const rows = st.range(0);
@@ -53,32 +52,28 @@ namespace {
     }
 
     BENCHMARK_REGISTER_F(CPUFixture, BatchedDotProduct)
-    ->Args({100, 100, 0})
-    ->Args({500, 500, 0})
-    ->Args({1000, 1000, 0})
-    ->Args({3000, 3000, 0})
-    ->Args({5000, 5000, 0})
+    // ->Args({100, 100, 0})
+    // ->Args({500, 500, 0})
+    // ->Args({1000, 1000, 0})
+    // ->Args({3000, 3000, 0})
+    // ->Args({5000, 5000, 0})
     // ->Args({1000, 1000000, 0})
     ->Args({100, 100, 1})
     ->Args({500, 500, 1})
     ->Args({1000, 1000, 1})
     ->Args({3000, 3000, 1})
     ->Args({5000, 5000, 1})
-    // ->Args({1000, 1000000, 1})
-    // ->Args({10000, 1})
-    // ->Args({15000, 1})
-    // ->Args({30000, 1})
-    // ->Args({60000, 1})
     ->Args({100, 100, 2})
     ->Args({500, 500, 2})
     ->Args({1000, 1000, 2})
     ->Args({3000, 3000, 2})
     ->Args({5000, 5000, 2})
-    // ->Args({1000, 1000000, 2})
-    // ->Args({10000, 2})
-    // ->Args({15000, 2})
-    // ->Args({30000, 2})
-    // ->Args({60000, 2})
+    // ->Args({1000, 1000000, 1})
+    ->Args({100, 100, 3})
+    ->Args({500, 500, 3})
+    ->Args({1000, 1000, 3})
+    ->Args({3000, 3000, 3})
+    ->Args({5000, 5000, 3})
     ->Threads(1);
 }
 

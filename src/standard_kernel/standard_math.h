@@ -48,21 +48,20 @@ namespace cobraml::core {
         const size_t rows,
         const size_t columns) {
 
-        constexpr size_t block_rows = 8; // best 15 // 8
-        constexpr size_t block_columns = 8192 / sizeof(NumType);
+        constexpr size_t block_rows{8}; // best 15 // 8
+        constexpr size_t block_columns{8192 / sizeof(NumType)};
 
-        size_t blocks_per_row = columns / block_columns;
+        size_t blocks_per_row{columns / block_columns};
         blocks_per_row += columns % block_columns > 0 ? 1 : 0; // add one more block if there is a remainder
 
-        size_t blocks_per_column = rows / block_rows;
+        size_t blocks_per_column{rows / block_rows};
         blocks_per_column += rows % block_rows > 0 ? 1 : 0; // add one more block if there is a remainder
 
         auto *dest_partials = new NumType[rows * blocks_per_row]();
 
         for (size_t i = 0; i < blocks_per_row; ++i) {
-
-            const NumType * vector_segment = &vector[i * block_columns];
-            size_t vector_len = block_columns;
+            const NumType *vector_segment{&vector[i * block_columns]};
+            size_t vector_len{block_columns};
 
             if (i == blocks_per_row - 1) {
                 vector_len = columns - (block_columns * i);
@@ -72,18 +71,19 @@ namespace cobraml::core {
 
 #pragma omp parallel for default(none) shared(dest_partials, block_rows, blocks_per_column, blocks_per_row, vector_segment, vector_len, matrix, dest, columns, rows, i) private(j)
             for (j = 0; j < blocks_per_column; ++j) {
-                size_t row_start = j * block_rows;
-                size_t row_end = row_start + block_rows;
+                size_t row_start{j * block_rows};
+                size_t row_end{row_start + block_rows};
 
                 if (j == blocks_per_column - 1) {
                     row_end = row_start + rows - (block_rows * j);
                 }
 
-                for (;row_start < row_end; ++row_start) {
-                    NumType partial = 0;
+                for (; row_start < row_end; ++row_start) {
+                    NumType partial{0};
 
                     for (size_t k = 0; k < vector_len; ++k) {
-                        partial += static_cast<NumType>(vector_segment[k] * matrix[row_start * columns + block_columns * i + k]);
+                        partial += static_cast<NumType>(
+                            vector_segment[k] * matrix[row_start * columns + block_columns * i + k]);
                     }
 
                     dest_partials[row_start * blocks_per_row + i] += partial;
@@ -98,6 +98,43 @@ namespace cobraml::core {
         }
 
         delete[] dest_partials;
+    }
+
+    template<typename NumType>
+    void gemv_parallel_block_2(
+        const NumType *matrix,
+        const NumType *vector,
+        NumType *dest,
+        const size_t rows,
+        const size_t columns) {
+
+        constexpr size_t block_multiplier = 8;
+        constexpr size_t block_columns = (8192 * block_multiplier) / sizeof(NumType);
+
+        size_t blocks_per_row = columns / block_columns;
+        blocks_per_row += columns % block_columns > 0 ? 1 : 0; // add one more block if there is a remainder
+
+        for (size_t i = 0; i < rows; ++i) {
+            NumType partial{0};
+            size_t j;
+
+#pragma omp parallel for default(none) shared(block_columns, blocks_per_row, vector, matrix, columns, rows, i) private(j) reduction(+:partial)
+            for (j = 0; j < blocks_per_row; ++j) {
+                const NumType *vector_segment = &vector[j * block_columns];
+                size_t vector_len{block_columns};
+
+                if (j == blocks_per_row - 1) {
+                    vector_len = columns - (block_columns * j);
+                }
+
+                for (size_t k = 0; k < vector_len; ++k) {
+                    partial += static_cast<NumType>(
+                        vector_segment[k] * matrix[(i * columns) + (j * block_columns) +  k]);
+                }
+            }
+
+            dest[i] = partial;
+        }
     }
 
 #ifdef BENCHMARK
@@ -122,6 +159,10 @@ namespace cobraml::core {
                 gemv_parallel_block(mat, vec, dest, rows, columns);
                 return;
             }
+            case 3: {
+                gemv_parallel_block_2(mat, vec, dest, rows, columns);
+                return;
+            }
             default: {
                 throw std::runtime_error("invalid gemv type provided");
             }
@@ -137,7 +178,7 @@ namespace cobraml::core {
         size_t const rows,
         size_t const columns) {
 
-        gemv_parallel_block(mat, vec, dest, rows, columns);
+        gemv_parallel_block_2(mat, vec, dest, rows, columns);
     }
 #endif
 
