@@ -3,6 +3,7 @@
 //
 
 
+#include <omp.h>
 #include <random>
 #include <gtest/gtest.h>
 #include "matrix.h"
@@ -125,6 +126,8 @@ bool arr_eq(const int *arr_one, const int *arr_two, size_t const len) {
 }
 
 TEST_F(MatrixTest, dot_product) {
+
+    omp_set_num_threads(20); // Use the thread count from benchmark range
     cobraml::core::Matrix const res1 = batched_dot_product(m1, m3);
 
     const int *res1_buff = cobraml::core::get_buffer<int>(res1);
@@ -132,7 +135,7 @@ TEST_F(MatrixTest, dot_product) {
         40, 115, 190, 265
     };
 
-    ASSERT_EQ(arr_eq(res1_buff, expected, 4), true);
+    ASSERT_EQ(arr_eq(res1_buff, expected, sizeof(expected) / sizeof(int)), true);
 
     auto const matt = create_vector(1000, 100000);
     auto const vect = create_vector(1, 100000);

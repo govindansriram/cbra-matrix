@@ -5,8 +5,10 @@
 #ifndef STANDARD_MATH_H
 #define STANDARD_MATH_H
 
+#include <cstring>
 #include <iostream>
 #include "../math_dis.h"
+#include <xmmintrin.h> // For _mm_prefetch
 
 namespace cobraml::core {
     template<typename NumType>
@@ -47,7 +49,6 @@ namespace cobraml::core {
         NumType *dest,
         const size_t rows,
         const size_t columns) {
-
         constexpr size_t block_rows{8}; // best 15 // 8
         constexpr size_t block_columns{8192 / sizeof(NumType)};
 
@@ -107,7 +108,6 @@ namespace cobraml::core {
         NumType *dest,
         const size_t rows,
         const size_t columns) {
-
         constexpr size_t block_multiplier = 8;
         constexpr size_t block_columns = (8192 * block_multiplier) / sizeof(NumType);
 
@@ -129,12 +129,112 @@ namespace cobraml::core {
 
                 for (size_t k = 0; k < vector_len; ++k) {
                     partial += static_cast<NumType>(
-                        vector_segment[k] * matrix[(i * columns) + (j * block_columns) +  k]);
+                        vector_segment[k] * matrix[(i * columns) + (j * block_columns) + k]);
                 }
             }
 
             dest[i] = partial;
         }
+    }
+
+#define BLOCK_COLUMNS_SIZE 8192
+#define BLOCK_ROW_SIZE 8
+#define CACHE_LINE_SIZE 64
+
+    template<typename NumType>
+    void gemv_parallel_block_copy(
+        const NumType *matrix,
+        const NumType *vector,
+        NumType *dest,
+        const size_t rows,
+        const size_t columns) {
+        constexpr size_t columns_per_block{BLOCK_COLUMNS_SIZE / sizeof(NumType)};
+
+        size_t blocks_per_row{columns / columns_per_block};
+        blocks_per_row += columns % columns_per_block > 0 ? 1 : 0; // add one more block if there is a remainder
+
+        size_t row_blocks{rows / BLOCK_ROW_SIZE};
+        row_blocks += rows % BLOCK_ROW_SIZE > 0 ? 1 : 0; // add one more block if there is a remainder
+
+        size_t cache_lines_per_row_block = BLOCK_ROW_SIZE * sizeof(NumType) / CACHE_LINE_SIZE;
+        cache_lines_per_row_block += BLOCK_ROW_SIZE * sizeof(NumType) % CACHE_LINE_SIZE > 0 ? 1 : 0;
+
+        auto *dest_partials = static_cast<char *>(
+            std::aligned_alloc(
+                CACHE_LINE_SIZE,
+                CACHE_LINE_SIZE * cache_lines_per_row_block * row_blocks * blocks_per_row)
+        );
+
+        for (size_t i = 0; i < blocks_per_row; ++i) {
+            const NumType *vector_segment{&vector[i * columns_per_block]};
+            size_t vector_len{columns_per_block};
+
+            if (i == blocks_per_row - 1) {
+                vector_len = columns - (columns_per_block * i);
+            }
+
+            alignas(CACHE_LINE_SIZE) NumType local_vector[columns_per_block]{};
+
+            memcpy(local_vector, vector_segment, vector_len * sizeof(NumType));
+
+            char *temp_addr = &dest_partials[(i * CACHE_LINE_SIZE * cache_lines_per_row_block * row_blocks)];
+
+            size_t j;
+
+            alignas(CACHE_LINE_SIZE) NumType local_matrix[BLOCK_ROW_SIZE][columns_per_block];
+
+#pragma omp parallel for default(none) shared(std::cout, vector_len, columns_per_block, temp_addr, cache_lines_per_row_block, row_blocks, blocks_per_row, matrix, dest, rows, i, columns) private(j, local_matrix) firstprivate(local_vector)
+            for (j = 0; j < row_blocks; ++j) {
+                size_t row_start{j * BLOCK_ROW_SIZE};
+                size_t row_end{row_start + BLOCK_ROW_SIZE};
+
+                if (j == row_blocks - 1) {
+                    row_end = row_start + rows - (BLOCK_ROW_SIZE * j);
+                }
+
+                for (size_t c_row = 0; c_row < (row_end - row_start); ++c_row) {
+                    memcpy(
+                        local_matrix[c_row],
+                        &matrix[(row_start + c_row) * columns + columns_per_block * i],
+                        vector_len * sizeof(NumType));
+                }
+
+                auto addr = reinterpret_cast<NumType *>(&temp_addr[(j * CACHE_LINE_SIZE * cache_lines_per_row_block)]);
+
+                for (int s = 0; row_start < row_end; ++row_start, ++s) {
+                    NumType partial{0};
+
+#pragma omp simd reduction(+:partial)
+                    for (size_t k = 0; k < columns_per_block; ++k) {
+                        partial += static_cast<NumType>(
+                            local_vector[k] * local_matrix[s][k]);
+                    }
+
+                    addr[s] = partial;
+                }
+            }
+        }
+
+        for (size_t i = 0; i < blocks_per_row; ++i) {
+            char *temp_addr = &dest_partials[(i * CACHE_LINE_SIZE * cache_lines_per_row_block * row_blocks)];
+
+            for (size_t j = 0; j < row_blocks; ++j) {
+                auto addr = reinterpret_cast<NumType *>(&temp_addr[(j * CACHE_LINE_SIZE * cache_lines_per_row_block)]);
+                size_t row_start{j * BLOCK_ROW_SIZE};
+                size_t row_end{row_start + BLOCK_ROW_SIZE};
+
+                if (j == row_blocks - 1) {
+                    row_end = row_start + rows - (BLOCK_ROW_SIZE * j);
+                }
+
+                for (int s = 0; row_start < row_end; ++row_start, ++s) {
+
+                    dest[row_start] += addr[s];
+                }
+            }
+        }
+
+        std::free(dest_partials);
     }
 
 #ifdef BENCHMARK
@@ -160,7 +260,7 @@ namespace cobraml::core {
                 return;
             }
             case 3: {
-                gemv_parallel_block_2(mat, vec, dest, rows, columns);
+                gemv_parallel_block_copy(mat, vec, dest, rows, columns);
                 return;
             }
             default: {
@@ -178,7 +278,7 @@ namespace cobraml::core {
         size_t const rows,
         size_t const columns) {
 
-        gemv_parallel_block_2(mat, vec, dest, rows, columns);
+        gemv_parallel_block_copy(mat, vec, dest, rows, columns);
     }
 #endif
 
