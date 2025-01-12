@@ -8,7 +8,7 @@
 #include <cstring>
 #include <iostream>
 #include "../math_dis.h"
-#include <xmmintrin.h> // For _mm_prefetch
+
 
 namespace cobraml::core {
     template<typename NumType>
@@ -34,11 +34,15 @@ namespace cobraml::core {
         const size_t columns) {
         size_t start;
 
-#pragma omp parallel for default(none) shared(matrix, vector, dest, rows, columns) private(start)
+#pragma omp parallel for default(none) shared(matrix, vector, dest, rows, columns) private(start) schedule(dynamic)
         for (start = 0; start < rows; ++start) {
+            NumType partial = 0;
+#pragma omp simd reduction(+:partial)
             for (size_t i = 0; i < columns; ++i) {
-                dest[start] += static_cast<NumType>(vector[i] * matrix[start * columns + i]);
+                partial += static_cast<NumType>(vector[i] * matrix[start * columns + i]);
             }
+
+            dest[start] = partial;
         }
     }
 
@@ -70,7 +74,7 @@ namespace cobraml::core {
 
             size_t j;
 
-#pragma omp parallel for default(none) shared(dest_partials, block_rows, blocks_per_column, blocks_per_row, vector_segment, vector_len, matrix, dest, columns, rows, i) private(j)
+#pragma omp parallel for default(none) shared(dest_partials, block_rows, blocks_per_column, blocks_per_row, vector_segment, vector_len, matrix, dest, columns, rows, i) private(j) schedule(dynamic)
             for (j = 0; j < blocks_per_column; ++j) {
                 size_t row_start{j * block_rows};
                 size_t row_end{row_start + block_rows};
@@ -101,6 +105,10 @@ namespace cobraml::core {
         delete[] dest_partials;
     }
 
+#define BLOCK_COLUMNS_SIZE 8192
+#define BLOCK_ROW_SIZE 4
+#define CACHE_LINE_SIZE 64
+
     template<typename NumType>
     void gemv_parallel_block_2(
         const NumType *matrix,
@@ -108,18 +116,18 @@ namespace cobraml::core {
         NumType *dest,
         const size_t rows,
         const size_t columns) {
-        constexpr size_t block_multiplier = 8;
-        constexpr size_t block_columns = (8192 * block_multiplier) / sizeof(NumType);
+        constexpr size_t block_multiplier = 1;
+        constexpr size_t block_columns = (10624 * block_multiplier) / sizeof(NumType);
 
         size_t blocks_per_row = columns / block_columns;
         blocks_per_row += columns % block_columns > 0 ? 1 : 0; // add one more block if there is a remainder
 
-        for (size_t i = 0; i < rows; ++i) {
+        size_t i;
+#pragma omp parallel for default(none) shared(dest, block_columns, blocks_per_row, vector, matrix, columns, rows) private(i) schedule(dynamic)
+        for (i = 0; i < rows; ++i) {
             NumType partial{0};
-            size_t j;
 
-#pragma omp parallel for default(none) shared(block_columns, blocks_per_row, vector, matrix, columns, rows, i) private(j) reduction(+:partial)
-            for (j = 0; j < blocks_per_row; ++j) {
+            for (size_t j = 0; j < blocks_per_row; ++j) {
                 const NumType *vector_segment = &vector[j * block_columns];
                 size_t vector_len{block_columns};
 
@@ -127,8 +135,9 @@ namespace cobraml::core {
                     vector_len = columns - (block_columns * j);
                 }
 
+// #pragma omp simd reduction(+:partial)
                 for (size_t k = 0; k < vector_len; ++k) {
-                    partial += static_cast<NumType>(
+                    partial = static_cast<NumType>(partial +
                         vector_segment[k] * matrix[(i * columns) + (j * block_columns) + k]);
                 }
             }
@@ -136,10 +145,6 @@ namespace cobraml::core {
             dest[i] = partial;
         }
     }
-
-#define BLOCK_COLUMNS_SIZE 8192
-#define BLOCK_ROW_SIZE 8
-#define CACHE_LINE_SIZE 64
 
     template<typename NumType>
     void gemv_parallel_block_copy(
@@ -204,7 +209,7 @@ namespace cobraml::core {
                 for (int s = 0; row_start < row_end; ++row_start, ++s) {
                     NumType partial{0};
 
-#pragma omp simd reduction(+:partial)
+#pragma omp simd reduction(+:partial) aligned(local_matrix: CACHE_LINE_SIZE) aligned(local_vector: CACHE_LINE_SIZE)
                     for (size_t k = 0; k < columns_per_block; ++k) {
                         partial += static_cast<NumType>(
                             local_vector[k] * local_matrix[s][k]);
@@ -228,7 +233,6 @@ namespace cobraml::core {
                 }
 
                 for (int s = 0; row_start < row_end; ++row_start, ++s) {
-
                     dest[row_start] += addr[s];
                 }
             }
@@ -259,8 +263,12 @@ namespace cobraml::core {
                 gemv_parallel_block(mat, vec, dest, rows, columns);
                 return;
             }
+            // case 3: {
+            //     gemv_parallel_block_copy(mat, vec, dest, rows, columns);
+            //     return;
+            // }
             case 3: {
-                gemv_parallel_block_copy(mat, vec, dest, rows, columns);
+                gemv_parallel_block_2(mat, vec, dest, rows, columns);
                 return;
             }
             default: {
@@ -278,7 +286,7 @@ namespace cobraml::core {
         size_t const rows,
         size_t const columns) {
 
-        gemv_parallel_block_copy(mat, vec, dest, rows, columns);
+        gemv_parallel_block_2(mat, vec, dest, rows, columns);
     }
 #endif
 
@@ -286,6 +294,6 @@ namespace cobraml::core {
         void batched_dot_product(const void *matrix, const void *vector, void *dest, size_t rows, size_t columns,
                                  Dtype dtype) override;
     };
-};
+}
 
 #endif //STANDARD_MATH_H

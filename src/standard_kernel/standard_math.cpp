@@ -4,8 +4,6 @@
 
 #include "standard_math.h"
 #include "enums.h"
-#include <omp.h>
-// #include "oneapi/tbb/enumerable_thread_specific.h"
 
 
 namespace cobraml::core {

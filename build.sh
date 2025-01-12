@@ -23,6 +23,8 @@ while getopts "bt" opt; do
     esac
 done
 
+which cmake
+
 # Check if the build directory exists
 if [ ! -d "$BUILD_DIR" ]; then
     echo "Creating $BUILD_DIR directory..."
