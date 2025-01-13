@@ -74,15 +74,19 @@ namespace cobraml::core {
 
         ~Matrix();
 
-        /**
-         * Start of the friend API
-         */
+        // Start of the Friend API
 
         /**
-         * computes the batched dot product between a singular vector shape (1, N) and matrix of shape (M, N)
-         * @return
+         * Generalized Matrix Vector Multiplication.
+         * Performs y=αAx+βy
+         *
+         * @param matrix A
+         * @param vector x
+         * @param result y
+         * @param alpha α
+         * @param beta β
          */
-        friend Matrix batched_dot_product(const Matrix &matrix, const Matrix &vector);
+        friend void gemv(const Matrix &matrix, const Matrix &vector, Matrix &result, const void * alpha, const void * beta);
 
         /**
          * provides access to the underlying matrix buffer in row major format

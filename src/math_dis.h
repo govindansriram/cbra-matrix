@@ -12,8 +12,14 @@ namespace cobraml::core {
     class Math {
     public:
         virtual ~Math() = default;
-        virtual void batched_dot_product(
-            const void * matrix, const void * vector, void * dest, size_t rows, size_t columns, Dtype dtype) = 0;
+        virtual void gemv(const void *matrix,
+            const void *vector,
+            void *dest,
+            const void *alpha,
+            const void *beta,
+            size_t rows,
+            size_t columns,
+            Dtype dtype) = 0;
     };
 
     extern std::array<std::unique_ptr<Math>, 3> global_math_kernels;

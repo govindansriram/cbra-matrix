@@ -29,7 +29,7 @@ namespace cobraml::core {
         return p_buffer;
     }
 
-    void Buffer::overwrite(const void *source, size_t byte_count, size_t offset) const {
+    void Buffer::overwrite(const void *source, const size_t byte_count, const size_t offset) const {
         char * const dest = static_cast<char *>(this->p_buffer) + offset;
         p_allocator->mem_copy(dest, source, byte_count);
     }

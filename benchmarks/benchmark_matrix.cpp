@@ -43,7 +43,7 @@ namespace {
             create_vector(1, col), cobraml::core::CPU);
 
         for (auto _: st) {
-            batched_dot_product(mat, vec);
+            gemv(mat, vec);
         }
 
         st.counters["rows"] = rows;
@@ -52,29 +52,24 @@ namespace {
     }
 
     BENCHMARK_REGISTER_F(CPUFixture, BatchedDotProduct)
-    // ->Args({100, 100, 0})
-    // ->Args({500, 500, 0})
-    // ->Args({1000, 1000, 0})
-    // ->Args({3000, 3000, 0})
-    // ->Args({5000, 5000, 0})
-    // ->Args({1000, 1000000, 0})
+    ->Args({100, 100, 0})
+    ->Args({500, 500, 0})
+    ->Args({1000, 1000, 0})
+    ->Args({3000, 3000, 0})
+    ->Args({5000, 5000, 0})
+    ->Args({1000, 1000000, 0})
     ->Args({100, 100, 1})
     ->Args({500, 500, 1})
     ->Args({1000, 1000, 1})
     ->Args({3000, 3000, 1})
     ->Args({5000, 5000, 1})
-    // ->Args({1000, 1000000, 1})
+    ->Args({1000, 1000000, 1})
     ->Args({100, 100, 2})
     ->Args({500, 500, 2})
     ->Args({1000, 1000, 2})
     ->Args({3000, 3000, 2})
     ->Args({5000, 5000, 2})
-    ->Args({100, 100, 3})
-    ->Args({500, 500, 3})
-    ->Args({1000, 1000, 3})
-    ->Args({3000, 3000, 3})
-    ->Args({5000, 5000, 3})
-    // ->Args({1000, 1000000, 3})
+    ->Args({1000, 1000000, 2})
     ->Threads(1);
 }
 

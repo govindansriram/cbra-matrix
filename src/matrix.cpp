@@ -119,7 +119,7 @@ namespace cobraml::core {
     }
 
 
-    Matrix batched_dot_product(const Matrix &matrix, const Matrix &vector) {
+    void gemv(const Matrix &matrix, const Matrix &vector, Matrix &result, const void * alpha, const void * beta) {
         if (vector.impl->rows != 1) {
             throw std::runtime_error("vector is a matrix");
         }
@@ -128,25 +128,27 @@ namespace cobraml::core {
             throw std::runtime_error("vector and matrix have different columns lengths");
         }
 
-        if (matrix.impl->device != vector.impl->device) {
+        if (matrix.impl->rows != result.impl->columns) {
+            throw std::runtime_error("matrix and dest have a different amount of rows");
+        }
+
+        if (matrix.impl->device != vector.impl->device || matrix.impl->device != result.impl->device) {
             throw std::runtime_error("vector and matrix are on different devices");
         }
 
-        if (matrix.impl->dtype != vector.impl->dtype) {
+        if (matrix.impl->dtype != vector.impl->dtype || matrix.impl->dtype != result.impl->dtype) {
             throw std::runtime_error("vector and matrix do not share the same dtype");
         }
 
-        Matrix ret(matrix.impl->rows, 1, matrix.impl->device, matrix.impl->dtype);
-
-        ret.impl->m_dispatcher->batched_dot_product(
+        result.impl->m_dispatcher->gemv(
             matrix.get_raw_buffer(),
             vector.get_raw_buffer(),
-            ret.get_raw_buffer(),
+            result.get_raw_buffer(),
+            alpha,
+            beta,
             matrix.impl->rows,
             matrix.impl->columns,
             matrix.impl->dtype);
-
-        return ret;
     }
 
     void print_details(Device const device, Dtype const dtype, size_t const rows, size_t const columns) {

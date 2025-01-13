@@ -11,7 +11,7 @@ namespace cobraml::core {
         std::make_unique<StandardMath>(),
     };
 
-    Math * get_math_kernels(Device device) {
+    Math * get_math_kernels(const Device device) {
         return global_math_kernels[device].get();
     }
 }
