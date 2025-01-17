@@ -119,34 +119,40 @@ namespace cobraml::core {
     }
 
 
-    Matrix batched_dot_product(const Matrix &matrix, const Matrix &vector) {
+    void gemv(const Matrix &matrix, const Matrix &vector, Matrix &result, const void * alpha, const void * beta) {
         if (vector.impl->rows != 1) {
             throw std::runtime_error("vector is a matrix");
+        }
+
+        if (result.impl->rows != 1) {
+            throw std::runtime_error("result is a matrix");
         }
 
         if (matrix.impl->columns != vector.impl->columns) {
             throw std::runtime_error("vector and matrix have different columns lengths");
         }
 
-        if (matrix.impl->device != vector.impl->device) {
-            throw std::runtime_error("vector and matrix are on different devices");
+        if (matrix.impl->rows != result.impl->columns) {
+            throw std::runtime_error("result must be size 1, rows(matrix)");
         }
 
-        if (matrix.impl->dtype != vector.impl->dtype) {
-            throw std::runtime_error("vector and matrix do not share the same dtype");
+        if (matrix.impl->device != vector.impl->device || matrix.impl->device != result.impl->device) {
+            throw std::runtime_error("vector, matrix and result are not on the same device");
         }
 
-        Matrix ret(matrix.impl->rows, 1, matrix.impl->device, matrix.impl->dtype);
+        if (matrix.impl->dtype != vector.impl->dtype || matrix.impl->dtype != result.impl->dtype) {
+            throw std::runtime_error("vector, matrix and result share different dtypes");
+        }
 
-        ret.impl->m_dispatcher->batched_dot_product(
+        result.impl->m_dispatcher->gemv(
             matrix.get_raw_buffer(),
             vector.get_raw_buffer(),
-            ret.get_raw_buffer(),
+            result.get_raw_buffer(),
+            alpha,
+            beta,
             matrix.impl->rows,
             matrix.impl->columns,
             matrix.impl->dtype);
-
-        return ret;
     }
 
     void print_details(Device const device, Dtype const dtype, size_t const rows, size_t const columns) {

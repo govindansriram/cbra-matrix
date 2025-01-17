@@ -3,11 +3,14 @@
 //
 
 #include "allocator.h"
-#include "standard_allocator.h"
+#include "standard_kernel/standard_allocator.h"
+#include <array>  // Add this line
 
 namespace cobraml::core {
 
     std::array<std::unique_ptr<Allocator>, 3> global_allocators{
+        std::make_unique<StandardAllocator>(),
+        std::make_unique<StandardAllocator>(),
         std::make_unique<StandardAllocator>(),
     };
 
@@ -28,7 +31,7 @@ namespace cobraml::core {
         return p_buffer;
     }
 
-    void Buffer::overwrite(const void *source, size_t byte_count, size_t offset) const {
+    void Buffer::overwrite(const void *source, const size_t byte_count, const size_t offset) const {
         char * const dest = static_cast<char *>(this->p_buffer) + offset;
         p_allocator->mem_copy(dest, source, byte_count);
     }

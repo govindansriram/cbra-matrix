@@ -2,7 +2,6 @@
 // Created by sriram on 12/19/24.
 //
 
-#include <omp.h>
 #include <benchmark/benchmark.h>
 #include <random>
 #include "matrix.h"
@@ -30,21 +29,24 @@ namespace {
 
     BENCHMARK_DEFINE_F(CPUFixture, BatchedDotProduct)(benchmark::State &st) {
 
-        omp_set_num_threads(20); // Use the thread count from benchmark range
-
-        size_t const rows = st.range(0);
-        size_t const col = st.range(1);
-        size_t const pos = st.range(2);
+        size_t const rows{static_cast<size_t>(st.range(0))};
+        size_t const col{static_cast<size_t>(st.range(1))};
+        size_t const pos{static_cast<size_t>(st.range(2))};
 
         cobraml::core::func_pos = pos;
+
         cobraml::core::Matrix const mat = from_vector(
             create_vector(rows, col), cobraml::core::CPU);
 
         cobraml::core::Matrix const vec = from_vector(
             create_vector(1, col), cobraml::core::CPU);
 
+        cobraml::core::Matrix res(1, rows, cobraml::core::CPU, cobraml::core::FLOAT64);
+
+        constexpr double alpha1{1};
+
         for (auto _: st) {
-            batched_dot_product(mat, vec);
+            gemv(mat, vec, res, &alpha1, &alpha1);
         }
 
         st.counters["rows"] = rows;
@@ -65,20 +67,12 @@ namespace {
     ->Args({3000, 3000, 1})
     ->Args({5000, 5000, 1})
     // ->Args({1000, 1000000, 1})
-    // ->Args({10000, 1})
-    // ->Args({15000, 1})
-    // ->Args({30000, 1})
-    // ->Args({60000, 1})
     ->Args({100, 100, 2})
     ->Args({500, 500, 2})
     ->Args({1000, 1000, 2})
     ->Args({3000, 3000, 2})
     ->Args({5000, 5000, 2})
     // ->Args({1000, 1000000, 2})
-    // ->Args({10000, 2})
-    // ->Args({15000, 2})
-    // ->Args({30000, 2})
-    // ->Args({60000, 2})
     ->Threads(1);
 }
 

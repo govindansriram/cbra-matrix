@@ -5,13 +5,13 @@ from graph import Graph
 
 
 class DotProductGraph(Graph, ABC):
-    _filename = "benchmark_matrix.json"
+    _benchmark_type = "benchmark_matrix"
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, benchmark_names: list[str]):
+        super().__init__(benchmark_names)
 
-    def _drop_columns(self):
-        self._df.drop(columns=[
+    def _drop_columns(self, frame: pd.DataFrame):
+        frame.drop(columns=[
             "name",
             "run_name",
             "family_index",
@@ -35,9 +35,11 @@ class DotProductGraph(Graph, ABC):
     def _number_to_label(num: int) -> str:
         match num:
             case 0:
-                return "naive(0)"
+                return "naive"
             case 1:
-                return "parallel(1)"
+                return "parallel"
+            case 2:
+                return "parallel blocked"
 
     def _get_cpu_line(self, df) -> Graph._Line:
         line = Graph._Line()
@@ -49,14 +51,14 @@ class DotProductGraph(Graph, ABC):
 
     def _get_time_line(self, df) -> Graph._Line:
         line = Graph._Line()
-        line.label = DotProductGraph._number_to_label(df["type"][0])
+        line.label = DotProductGraph._number_to_label(df["type"][0]) + " " + df["settings"][0]
         line.x_values = df["shape"].to_numpy()
         line.y_values = df["real_time"].to_numpy()
 
         return line
 
     def _group_by(self) -> list[pd.DataFrame]:
-        group = self._df.groupby(['type'])
+        group = self._df.groupby(['type', 'settings'])
         frame_list = [frame for _, frame in group]
         return list(map(DotProductGraph._clean_frame, frame_list))
 
