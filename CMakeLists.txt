@@ -52,6 +52,10 @@ endif()
 option(ENABLE_TESTING "Enable testing-specific compile options" ON)
 option(IS_THREAD "Test for thread related issues" OFF)
 
+if(DEFINED THREAD_COUNT)
+    add_definitions(-DNUM_THREADS=${THREAD_COUNT})
+endif()
+
 if(ENABLE_TESTING)
 
     set(COMMON_COMPILE_OPTIONS
@@ -116,16 +120,19 @@ else ()
     set(COMMON_COMPILE_OPTIONS
             -O2
             -flto
-            -march=native
-            -ffast-math
-            -funroll-loops
-            -ftree-vectorize
             -fopenmp
     )
+
+    # Append additional flags if provided via the command line
+    if(DEFINED ADDITIONAL_COMPILE_OPTIONS)
+        list(APPEND COMMON_COMPILE_OPTIONS ${ADDITIONAL_COMPILE_OPTIONS})
+    endif()
 
     target_compile_options(CmlContentBasedFiltering PRIVATE ${COMMON_COMPILE_OPTIONS})
 
     add_definitions(-DBENCHMARK=1)
+
+    message(STATUS "CMAKE_CXX_FLAGS: ${COMMON_COMPILE_OPTIONS}")
 
     add_executable(benchmark_matrix benchmarks/benchmark_matrix.cpp)
 

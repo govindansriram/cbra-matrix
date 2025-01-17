@@ -3,10 +3,23 @@
 //
 
 #include "standard_math.h"
+#include <omp.h>
 #include "enums.h"
 
 
 namespace cobraml::core {
+
+    void set_num_threads() {
+        static bool set = false;
+
+        if (!set) {
+#ifdef NUM_THREADS
+            omp_set_num_threads(NUM_THREADS);
+#else
+            omp_set_num_threads(9);
+#endif
+        }
+    }
 
     void StandardMath::gemv(
         const void *matrix,

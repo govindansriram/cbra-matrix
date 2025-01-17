@@ -19,7 +19,10 @@ if [[ " $@ " =~ " -b " ]]; then
     fi
 fi
 
-docker exec $CONTAINER_NAME /bin/bash -c "cd /home && ./build.sh $@"
+DOCKER_COMMAND="docker exec $CONTAINER_NAME /bin/bash -c \"cd /home && ./build.sh $@\""
+echo "$DOCKER_COMMAND"
+eval "$DOCKER_COMMAND"
+
 
 if [[ " $@ " =~ " -b " ]]; then
     if [[ "$(uname -s)" == "Linux" ]]; then

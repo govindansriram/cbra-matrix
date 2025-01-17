@@ -10,6 +10,8 @@ namespace cobraml::core {
 
     std::array<std::unique_ptr<Allocator>, 3> global_allocators{
         std::make_unique<StandardAllocator>(),
+        std::make_unique<StandardAllocator>(),
+        std::make_unique<StandardAllocator>(),
     };
 
     Allocator * get_allocator(Device const device) {

@@ -6,12 +6,11 @@
 #define STANDARD_MATH_H
 
 #include <iostream>
-#include <sys/stat.h>
-
 #include "../math_dis.h"
 
-
 namespace cobraml::core {
+    void set_num_threads();
+
     template<typename NumType>
     void gemv_naive(
         const NumType *matrix,
@@ -40,6 +39,31 @@ namespace cobraml::core {
         const NumType beta,
         const size_t rows,
         const size_t columns) {
+        set_num_threads();
+        size_t start;
+
+#pragma omp parallel for default(none) shared(alpha, beta, matrix, vector, dest, rows, columns) private(start) schedule(dynamic)
+        for (start = 0; start < rows; ++start) {
+            NumType partial = 0;
+
+            for (size_t i = 0; i < columns; ++i) {
+                partial += static_cast<NumType>(vector[i] * matrix[start * columns + i]);
+            }
+
+            dest[start] = static_cast<NumType>(dest[start] * beta + partial * alpha);
+        }
+    }
+
+    template<typename NumType>
+    void gemv_parallel_simd(
+        const NumType *matrix,
+        const NumType *vector,
+        NumType *dest,
+        const NumType alpha,
+        const NumType beta,
+        const size_t rows,
+        const size_t columns) {
+        set_num_threads();
         size_t start;
 
 #pragma omp parallel for default(none) shared(alpha, beta, matrix, vector, dest, rows, columns) private(start) schedule(dynamic)
@@ -64,6 +88,8 @@ namespace cobraml::core {
         const NumType beta,
         const size_t rows,
         const size_t columns) {
+        set_num_threads();
+
         constexpr size_t block_rows{8}; // best 15 // 8
         constexpr size_t block_columns{8192 / sizeof(NumType)};
 
@@ -137,6 +163,10 @@ namespace cobraml::core {
                 return;
             }
             case 2: {
+                gemv_parallel_simd(mat, vec, dest, alpha, beta, rows, columns);
+                return;
+            }
+            case 3: {
                 gemv_parallel_block(mat, vec, dest, alpha, beta, rows, columns);
                 return;
             }
@@ -157,7 +187,7 @@ namespace cobraml::core {
         size_t const rows,
         size_t const columns) {
 
-        gemv_naive(mat, vec, dest, alpha, beta, rows, columns);
+        gemv_parallel_simd(mat, vec, dest, alpha, beta, rows, columns);
     }
 #endif
 

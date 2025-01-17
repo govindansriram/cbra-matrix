@@ -124,20 +124,24 @@ namespace cobraml::core {
             throw std::runtime_error("vector is a matrix");
         }
 
+        if (result.impl->rows != 1) {
+            throw std::runtime_error("result is a matrix");
+        }
+
         if (matrix.impl->columns != vector.impl->columns) {
             throw std::runtime_error("vector and matrix have different columns lengths");
         }
 
         if (matrix.impl->rows != result.impl->columns) {
-            throw std::runtime_error("matrix and dest have a different amount of rows");
+            throw std::runtime_error("result must be size 1, rows(matrix)");
         }
 
         if (matrix.impl->device != vector.impl->device || matrix.impl->device != result.impl->device) {
-            throw std::runtime_error("vector and matrix are on different devices");
+            throw std::runtime_error("vector, matrix and result are not on the same device");
         }
 
         if (matrix.impl->dtype != vector.impl->dtype || matrix.impl->dtype != result.impl->dtype) {
-            throw std::runtime_error("vector and matrix do not share the same dtype");
+            throw std::runtime_error("vector, matrix and result share different dtypes");
         }
 
         result.impl->m_dispatcher->gemv(
