@@ -39,7 +39,13 @@ class DotProductGraph(Graph, ABC):
             case 1:
                 return "parallel"
             case 2:
+                return "parallel simd"
+            case 3:
                 return "parallel blocked"
+            case 4:
+                return "parallel blocked simd"
+            case _:
+                raise RuntimeError("invalid algorithm")
 
     def _get_cpu_line(self, df) -> Graph._Line:
         line = Graph._Line()
