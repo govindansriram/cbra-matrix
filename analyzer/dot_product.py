@@ -44,6 +44,8 @@ class DotProductGraph(Graph, ABC):
                 return "parallel blocked"
             case 4:
                 return "parallel blocked simd"
+            case 5:
+                return "parallel row split simd"
             case _:
                 raise RuntimeError("invalid algorithm")
 
@@ -72,6 +74,7 @@ class DotProductGraph(Graph, ABC):
         fig, ax = plt.subplots()
 
         for line in lines:
+            # print(line)
             ax.plot(line.x_values, line.y_values, label=line.label)
 
         ax.set_title("batched dot product computation time")
