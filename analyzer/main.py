@@ -8,3 +8,7 @@ if __name__ == '__main__':
     if args[0] == "dp":
         graph = DotProductGraph(args[1:])
         graph.pipeline()
+
+    if args[0] == "dpf":
+        graph = DotProductGraph(args[1:], cycles=True)
+        graph.pipeline()
