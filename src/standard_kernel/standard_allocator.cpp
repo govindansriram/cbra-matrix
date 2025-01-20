@@ -9,12 +9,36 @@
 
 
 namespace cobraml::core {
-    void * StandardAllocator::malloc(const std::size_t bytes) {
-        return std::malloc(bytes);
+
+#define ALIGNMENT 32
+#define MIN_LENGTH 256 // 64  * 4 (ensures there is a 4 element padding for 64 bit systems)
+
+    static size_t compute_aligned_size(size_t const bytes) {
+
+        size_t const remainder = bytes % MIN_LENGTH;
+
+        if (remainder == bytes)
+            return MIN_LENGTH;
+
+        if (remainder == 0)
+            return bytes;
+
+        return bytes + (MIN_LENGTH - remainder);
     }
 
+    void * StandardAllocator::malloc(std::size_t const bytes) {
+        // std::cout << bytes << " bytes" << std::endl;
+        // std::cout << compute_aligned_size(bytes) << " bytes" << std::endl;
+        return std::aligned_alloc(ALIGNMENT, compute_aligned_size(bytes));
+    }
+
+
+    // A malloc() followed by a memset() will likely be about as fast as calloc()
+    // https://stackoverflow.com/questions/2605476/calloc-v-s-malloc-and-time-efficiency
     void * StandardAllocator::calloc(const std::size_t bytes) {
-        return std::calloc(bytes, 1);
+        void * ptr = malloc(bytes);
+        std::memset(ptr, 0, compute_aligned_size(bytes));
+        return ptr;
     }
 
     void StandardAllocator::mem_copy(void *dest, const void *source, std::size_t const bytes) {

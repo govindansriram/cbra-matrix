@@ -7,8 +7,10 @@ from graph import Graph
 class DotProductGraph(Graph, ABC):
     _benchmark_type = "benchmark_matrix"
 
-    def __init__(self, benchmark_names: list[str]):
+    def __init__(self, benchmark_names: list[str], cycles: bool = False):
         super().__init__(benchmark_names)
+
+        self._cycles = cycles
 
     def _drop_columns(self, frame: pd.DataFrame):
         frame.drop(columns=[
@@ -44,6 +46,8 @@ class DotProductGraph(Graph, ABC):
                 return "parallel blocked"
             case 4:
                 return "parallel blocked simd"
+            case 5:
+                return "parallel row split simd"
             case _:
                 raise RuntimeError("invalid algorithm")
 
@@ -59,7 +63,14 @@ class DotProductGraph(Graph, ABC):
         line = Graph._Line()
         line.label = DotProductGraph._number_to_label(df["type"][0]) + " " + df["settings"][0]
         line.x_values = df["shape"].to_numpy()
-        line.y_values = df["real_time"].to_numpy()
+
+        if self._cycles:
+            cycles = df["real_time"].to_numpy() * 2.5 # 2.5 GHZ
+            flops = df["shape"].to_numpy()
+            flops = flops * (2 * flops + 3)
+            line.y_values = flops / cycles
+        else:
+            line.y_values = df["real_time"].to_numpy()
 
         return line
 
@@ -72,11 +83,16 @@ class DotProductGraph(Graph, ABC):
         fig, ax = plt.subplots()
 
         for line in lines:
+            # print(line)
             ax.plot(line.x_values, line.y_values, label=line.label)
 
         ax.set_title("batched dot product computation time")
         ax.set_xlabel('matrix size')
-        ax.set_ylabel('nanoseconds')
+
+        if not self._cycles:
+            ax.set_ylabel('nanoseconds')
+        else:
+            ax.set_ylabel("flops/cycle")
 
         ax.legend()
         plt.show()

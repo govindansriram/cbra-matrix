@@ -79,6 +79,53 @@ namespace cobraml::core {
         }
     }
 
+#define ROW_COUNT 2
+
+
+    template<typename NumType>
+    void gemv_parallel_simd_2(
+        const NumType *matrix,
+        const NumType *vector,
+        NumType *dest,
+        const NumType alpha,
+        const NumType beta,
+        const size_t rows,
+        const size_t columns) {
+        set_num_threads();
+        size_t start;
+
+#pragma omp parallel for default(none) shared(alpha, beta, matrix, vector, dest, rows, columns) private(start) schedule(dynamic)
+        for (start = 0; start < rows; start += ROW_COUNT) {
+            NumType partial;
+
+            size_t const end_row = start + ROW_COUNT;
+            size_t start_row = start;
+
+            if (end_row > rows) {
+                for (; start_row < rows; ++start_row) {
+                    partial = 0;
+#pragma omp simd reduction(+:partial) aligned(vector: 32) aligned(matrix: 32)
+                    for (size_t i = 0; i < columns; ++i) {
+                        partial += static_cast<NumType>(vector[i] * matrix[start_row * columns + i]);
+                    }
+
+                    dest[start_row] = static_cast<NumType>(dest[start_row] * beta + partial * alpha);
+                }
+            }else {
+                partial = 0;
+                NumType partial_2 = 0;
+#pragma omp simd reduction(+:partial) reduction(+:partial_2) aligned(vector: 32) aligned(matrix: 32)
+                for (size_t i = 0; i < columns; ++i) {
+                    partial += static_cast<NumType>(vector[i] * matrix[start * columns + i]);
+                    partial_2 += static_cast<NumType>(vector[i] * matrix[(start + 1) * columns + i]);
+                }
+
+                dest[start] = static_cast<NumType>(dest[start] * beta + partial * alpha);
+                dest[start + 1] = static_cast<NumType>(dest[start + 1] * beta + partial_2 * alpha);
+            }
+        }
+    }
+
 #define ROWS 8
 #define COLUMNS 8192 // bytes
 
@@ -241,6 +288,10 @@ namespace cobraml::core {
                 gemv_parallel_block_simd(mat, vec, dest, alpha, beta, rows, columns);
                 return;
             }
+            case 5: {
+                gemv_parallel_simd_2(mat, vec, dest, alpha, beta, rows, columns);
+                return;
+            }
             default: {
                 throw std::runtime_error("invalid gemv type provided");
             }
@@ -257,7 +308,7 @@ namespace cobraml::core {
         const NumType beta,
         size_t const rows,
         size_t const columns) {
-        gemv_parallel_block_simd(mat, vec, dest, alpha, beta, rows, columns);
+        gemv_parallel_simd_2(mat, vec, dest, alpha, beta, rows, columns);
     }
 #endif
 
