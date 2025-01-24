@@ -7,12 +7,14 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <utility>
 #include "allocator.h"
 #include "enums.h"
 #include "math_dis.h"
 
 namespace cobraml::core {
     struct Matrix::MatrixImpl {
+        size_t offset = 0;
         size_t rows = 0;
         size_t columns = 0;
         Device device = CPU;
@@ -33,7 +35,7 @@ namespace cobraml::core {
         MatrixImpl& operator=(const MatrixImpl&) = default;
 
         [[nodiscard]] void *get_raw_buffer() const {
-            return buffer->get_p_buffer();
+            return static_cast<char *>(buffer->get_p_buffer()) + offset;
         }
     };
 
@@ -99,7 +101,14 @@ namespace cobraml::core {
         }
     }
 
-    Matrix::Matrix(Matrix &other): impl(std::move(other.impl)) {}
+    Matrix::Matrix(Matrix const &other):impl(std::make_unique<MatrixImpl>()) {
+        impl->columns = other.impl->columns;
+        impl->rows = other.impl->rows;
+        impl->dtype = other.impl->dtype;
+        impl->device = other.impl->device;
+        impl->buffer = other.impl->buffer;
+        impl->m_dispatcher = other.impl->m_dispatcher;
+    }
 
     Matrix& Matrix::operator=(const Matrix &other) {
         if (this != &other) {
@@ -230,4 +239,48 @@ namespace cobraml::core {
 
         std::cout << "]\n\n";
     }
+
+    static size_t sum_vec(std::vector<size_t> const &shape) {
+
+        if (shape.empty())
+            return 0;
+
+        size_t sum{1};
+        for (auto const &num: shape)
+            sum *= num;
+
+        return sum;
+    }
+
+    struct Tensor::TensorImpl {
+        size_t offset = 0;
+        std::vector<size_t> shape;
+        Device device = CPU;
+        Dtype dtype = INVALID;
+        std::shared_ptr<Buffer> buffer = nullptr;
+        Math * m_dispatcher = nullptr;
+
+        TensorImpl() = default;
+        TensorImpl(const TensorImpl&) = default;
+        TensorImpl& operator=(const TensorImpl&) = default;
+
+        TensorImpl(std::vector<size_t> shape, Device const device, Dtype const dtype):
+            shape(std::move(shape)), device(device), dtype(dtype) {
+            size_t const sum = sum_vec(shape);
+            buffer = std::make_shared<Buffer>(sum * dtype_to_bytes(dtype), device);
+            m_dispatcher = get_math_kernels(device);
+        }
+    };
+
+    Tensor::Tensor(std::vector<size_t> shape, Device device, Dtype dtype):
+        impl(std::make_unique<TensorImpl>(std::move(shape), device, dtype)){
+    }
+
+    void Tensor::test_nothing() {
+        auto const m = Matrix();
+        // Matrix const m(1, 1, this->impl->device, this->impl->dtype);
+        std::cout << (m.impl->buffer == nullptr) << std::endl;
+    }
+
+    Tensor::~Tensor() = default;
 }

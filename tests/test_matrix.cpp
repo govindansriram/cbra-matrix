@@ -66,19 +66,6 @@ protected:
     std::vector<std::vector<double>> _mat2{};
     std::vector<std::vector<double>> _vec2{};
 
-    /**
-     * TODO
-     * lookup saturatuing memory andwidths
-     * ensure simd is being used
-     * test loop unrolling
-     * test prefetching
-     * use article for help
-     * optimize sections with openmp when necessary
-     * test large matrices
-     * use blocking for sequential access for more thread potential
-     * Try thread private vector (and copying)
-     * add cache alignment
-     */
     MatrixTest(): test_mat(23, 1, cobraml::core::CPU, cobraml::core::INT8) {
         auto const mat{
             std::vector<std::vector<int> >{
@@ -135,6 +122,51 @@ TEST_F(MatrixTest, test_meta_data) {
     ASSERT_EQ(columns, 1);
     ASSERT_EQ(rows, 23);
     ASSERT_EQ(test_mat.get_device(), cobraml::core::CPU);
+}
+
+TEST(MatrixTestFunc, test_copy_constuctor) {
+    cobraml::core::Matrix const mat(5, 5, cobraml::core::CPU, cobraml::core::INT8);
+    cobraml::core::Matrix const mat1{mat};
+
+    const auto [rows, columns]{mat.get_shape()};
+    const auto [rows1, columns1]{mat1.get_shape()};
+
+    ASSERT_EQ(columns, columns1);
+    ASSERT_EQ(rows, rows1);
+    ASSERT_EQ(mat.get_dtype(), mat1.get_dtype());
+    ASSERT_EQ(mat1.get_device(), mat.get_device());
+
+    size_t const total{ rows * columns};
+
+    const int8_t * p{cobraml::core::get_buffer<int8_t>(mat)};
+    const int8_t * p1{cobraml::core::get_buffer<int8_t>(mat1)};
+
+    for (size_t i = 0; i < total; ++i) {
+        ASSERT_EQ(p[0], p1[0]);
+    }
+}
+
+TEST(MatrixTestFunc, test_copy_assignment_constuctor) {
+    cobraml::core::Matrix const mat(5, 5, cobraml::core::CPU, cobraml::core::INT8);
+    cobraml::core::Matrix mat1(10, 20, cobraml::core::CPU, cobraml::core::INT64);
+    mat1 = mat;
+
+    const auto [rows, columns]{mat.get_shape()};
+    const auto [rows1, columns1]{mat1.get_shape()};
+
+    ASSERT_EQ(columns, columns1);
+    ASSERT_EQ(rows, rows1);
+    ASSERT_EQ(mat.get_dtype(), mat1.get_dtype());
+    ASSERT_EQ(mat1.get_device(), mat.get_device());
+
+    size_t const total{ rows * columns};
+
+    const int8_t * p{cobraml::core::get_buffer<int8_t>(mat)};
+    const int8_t * p1{cobraml::core::get_buffer<int8_t>(mat1)};
+
+    for (size_t i = 0; i < total; ++i) {
+        ASSERT_EQ(p[0], p1[0]);
+    }
 }
 
 /**

@@ -11,6 +11,16 @@
 #include "iostream"
 
 namespace cobraml::core {
+    class Tensor {
+        struct TensorImpl;
+        std::unique_ptr<TensorImpl> impl;
+
+    public:
+        Tensor(std::vector<size_t> shape, Device device, Dtype dtype);
+        void test_nothing();
+        ~Tensor();
+    };
+
     class Matrix {
         struct MatrixImpl;
         std::unique_ptr<MatrixImpl> impl;
@@ -30,6 +40,7 @@ namespace cobraml::core {
          */
         void replace_segment(const void * source, size_t offset, size_t bytes) const;
 
+        friend class Tensor;
     public:
         struct Shape {
             size_t rows;
@@ -46,7 +57,7 @@ namespace cobraml::core {
         Matrix(size_t rows, size_t columns, Device device, Dtype dtype);
 
         Matrix();
-        Matrix(Matrix &other);
+        Matrix(Matrix const &other);
         Matrix& operator=(const Matrix& other);
 
         /**
