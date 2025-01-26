@@ -19,6 +19,8 @@ set(SOURCES
         src/enums.cpp
         include/enums.h
         src/math_dis.cpp
+        src/barray.cpp
+        include/barray.h
 )
 
 list(APPEND CMAKE_PREFIX_PATH "/opt/intel/oneapi/tbb/latest/lib/cmake") # path to intel onetbb
@@ -93,6 +95,7 @@ if(ENABLE_TESTING)
     FetchContent_MakeAvailable(googletest)
 
     add_executable(test_matrix tests/test_matrix.cpp)
+    add_executable(test_array tests/test_barray.cpp)
     add_executable(test_enums tests/test_enums.cpp)
 
     include(GoogleTest)
@@ -103,6 +106,13 @@ if(ENABLE_TESTING)
 
     target_link_libraries(
             test_matrix
+            GTest::gtest_main
+            CmlContentBasedFiltering
+    )
+
+
+    target_link_libraries(
+            test_array
             GTest::gtest_main
             CmlContentBasedFiltering
     )
