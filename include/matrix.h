@@ -11,19 +11,17 @@
 #include "iostream"
 
 namespace cobraml::core {
-    class Tensor {
-        struct TensorImpl;
-        std::unique_ptr<TensorImpl> impl;
+
+    class Array {
+
+    protected:
+        struct ArrayImpl;
+        std::unique_ptr<ArrayImpl> impl;
 
     public:
-        Tensor(std::vector<size_t> shape, Device device, Dtype dtype);
-        void test_nothing();
-        ~Tensor();
-    };
-
-    class Matrix {
-        struct MatrixImpl;
-        std::unique_ptr<MatrixImpl> impl;
+        Array(size_t total_bytes, Device device, Dtype dtype);
+        ~Array();
+        Array();
 
         /**
          * get the raw pointer backing an array, do not free this pointer
@@ -31,6 +29,29 @@ namespace cobraml::core {
          * @return a raw void pointer to the buffer data
          */
         [[nodiscard]] void *get_raw_buffer() const;
+
+        /**
+         * @return the dtype of the matrix
+         */
+        [[nodiscard]] Dtype get_dtype() const;
+
+        /**
+        * @return the Device of the matrix
+        */
+        [[nodiscard]] Device get_device() const;
+
+        /**
+         * provides access to the underlying buffer
+         * @tparam T the type that the ptr should be cast too, it must match the Dtype
+         * @return the raw ptr buffer
+         */
+        template<typename T>
+        friend const T *get_buffer(const Array &matrix);
+    };
+
+    class Matrix : public Array{
+        size_t rows;
+        size_t columns;
 
         /**
          * replace a segment of the matrix buffer with a different buffer
@@ -45,6 +66,8 @@ namespace cobraml::core {
         struct Shape {
             size_t rows;
             size_t columns;
+
+            bool operator==(const Shape& other) const;
         };
 
         /**
@@ -59,16 +82,17 @@ namespace cobraml::core {
         Matrix();
         Matrix(Matrix const &other);
         Matrix& operator=(const Matrix& other);
+        Matrix operator[] (size_t index) const;
 
         /**
-         * @return the dtype of the matrix
+         * @return True if matrix qualifies as a vector
          */
-        [[nodiscard]] Dtype get_dtype() const;
+        [[nodiscard]] bool is_vector() const;
 
         /**
-        * @return the Device of the matrix
-        */
-        [[nodiscard]] Device get_device() const;
+         * @return True if matrix qualifies as a scalar
+         */
+        [[nodiscard]] bool is_scalar() const;
 
         /**
         * @return the shape of the matrix
@@ -97,16 +121,11 @@ namespace cobraml::core {
          */
         friend void gemv(const Matrix &matrix, const Matrix &vector, Matrix &result, const void * alpha, const void * beta);
 
-        /**
-         * provides access to the underlying matrix buffer in row major format
-         * @tparam T the type that the ptr should be cast too, it must match the Dtype
-         * @return the raw ptr buffer
-         */
-        template<typename T>
-        friend const T *get_buffer(const Matrix &matrix);
-
         template<typename T>
         friend Matrix from_vector(const std::vector<std::vector<T>> &mat, Device device);
+
+        template<typename T>
+        friend T to_scalar(const Matrix &matrix);
     };
 
     template<typename T>
@@ -146,6 +165,23 @@ namespace cobraml::core {
         }
 
         return static_cast<T *>(matrix.get_raw_buffer());
+    }
+
+    template<typename T>
+    T to_scalar(const Matrix &matrix) {
+
+        if (!matrix.is_scalar()) {
+            throw std::runtime_error(
+                "matrix is not of shape (1, 1), cannot extract scalar");
+        }
+
+        const Dtype current{matrix.get_dtype()};
+        if (constexpr Dtype given = get_dtype_from_type<T>::type; given != current) {
+            throw std::runtime_error(
+                "provided buffer type does not match matrix type: " + dtype_to_string(current));
+        }
+
+        return static_cast<T *>(matrix.get_raw_buffer())[0];
     }
 }
 

@@ -59,14 +59,20 @@ bool arr_eq(const int *arr_one, const int *arr_two, size_t const len) {
 class MatrixTest : public testing::Test {
 protected:
     cobraml::core::Matrix test_mat;
-    cobraml::core::Matrix mat1{};
-    cobraml::core::Matrix vec1{};
-    cobraml::core::Matrix mat2{};
-    cobraml::core::Matrix vec2{};
+    cobraml::core::Matrix mat1;
+    cobraml::core::Matrix vec1;
+    cobraml::core::Matrix mat2;
+    cobraml::core::Matrix vec2;
     std::vector<std::vector<double>> _mat2{};
     std::vector<std::vector<double>> _vec2{};
 
-    MatrixTest(): test_mat(23, 1, cobraml::core::CPU, cobraml::core::INT8) {
+    MatrixTest():
+    test_mat(23, 1, cobraml::core::CPU, cobraml::core::INT8),
+    mat1(4, 5, cobraml::core::CPU, cobraml::core::INT32),
+    vec1(1, 5, cobraml::core::CPU, cobraml::core::INT32),
+    mat2(1000, 100000, cobraml::core::CPU, cobraml::core::FLOAT64),
+    vec2(1, 100000, cobraml::core::CPU, cobraml::core::FLOAT64){
+
         auto const mat{
             std::vector<std::vector<int> >{
                 {0, 1, 2, 3, 4},
@@ -116,12 +122,19 @@ TEST(MatrixTestFunc, test_invalid_constructor) {
 }
 
 
-TEST_F(MatrixTest, test_meta_data) {
-    ASSERT_EQ(test_mat.get_dtype(), cobraml::core::INT8);
-    const auto [rows, columns] = test_mat.get_shape();
-    ASSERT_EQ(columns, 1);
-    ASSERT_EQ(rows, 23);
-    ASSERT_EQ(test_mat.get_device(), cobraml::core::CPU);
+TEST(MatrixTestFunc, test_is_vector) {
+    cobraml::core::Matrix const vec(1, 10, cobraml::core::CPU, cobraml::core::INT8);
+    cobraml::core::Matrix const mat(2, 10, cobraml::core::CPU, cobraml::core::INT8);
+    ASSERT_EQ(vec.is_vector(), true);
+    ASSERT_EQ(mat.is_vector(), false);
+}
+
+
+TEST(MatrixTestFunc, test_is_scalar) {
+    cobraml::core::Matrix const scalar(1, 1, cobraml::core::CPU, cobraml::core::INT8);
+    cobraml::core::Matrix const mat(2, 10, cobraml::core::CPU, cobraml::core::INT8);
+    ASSERT_EQ(scalar.is_scalar(), true);
+    ASSERT_EQ(mat.is_vector(), false);
 }
 
 TEST(MatrixTestFunc, test_copy_constuctor) {
@@ -169,6 +182,14 @@ TEST(MatrixTestFunc, test_copy_assignment_constuctor) {
     }
 }
 
+TEST_F(MatrixTest, test_meta_data) {
+    ASSERT_EQ(test_mat.get_dtype(), cobraml::core::INT8);
+    const auto [rows, columns] = test_mat.get_shape();
+    ASSERT_EQ(columns, 1);
+    ASSERT_EQ(rows, 23);
+    ASSERT_EQ(test_mat.get_device(), cobraml::core::CPU);
+}
+
 /**
  ************************************* TEST GEMV *************************************************
  */
@@ -188,9 +209,9 @@ TEST_F(MatrixTest, test_invalid_gemv_vector) {
 
     ASSERT_THROW(gemv(mat, vec, res, &alpha, &beta), std::runtime_error);
 
-    vec = cobraml::core::Matrix(1,5,cobraml::core::CPU,cobraml::core::FLOAT32);
+    const auto vec2 = cobraml::core::Matrix(1,5,cobraml::core::CPU,cobraml::core::FLOAT32);
 
-    ASSERT_THROW(gemv(mat, vec, res, &alpha, &beta), std::runtime_error);
+    ASSERT_THROW(gemv(mat, vec2, res, &alpha, &beta), std::runtime_error);
 }
 
 TEST_F(MatrixTest, test_invalid_gemv_result) {
@@ -208,9 +229,9 @@ TEST_F(MatrixTest, test_invalid_gemv_result) {
 
     ASSERT_THROW(gemv(mat, vec, res, &alpha, &beta), std::runtime_error);
 
-    res = cobraml::core::Matrix(1,5,cobraml::core::CPU,cobraml::core::FLOAT32);
+    auto res2 = cobraml::core::Matrix(1,5,cobraml::core::CPU,cobraml::core::FLOAT32);
 
-    ASSERT_THROW(gemv(mat, vec, res, &alpha, &beta), std::runtime_error);
+    ASSERT_THROW(gemv(mat, vec, res2, &alpha, &beta), std::runtime_error);
 }
 
 TEST_F(MatrixTest, test_invalid_gemv_dtype) {
@@ -228,15 +249,15 @@ TEST_F(MatrixTest, test_invalid_gemv_dtype) {
 
     ASSERT_THROW(gemv(mat, vec, res, &alpha, &beta), std::runtime_error);
 
-    mat = cobraml::core::Matrix(10,10,cobraml::core::CPU,cobraml::core::FLOAT32);
-    vec = cobraml::core::Matrix(1,10,cobraml::core::CPU,cobraml::core::INT32);
+    auto mat1 = cobraml::core::Matrix(10,10,cobraml::core::CPU,cobraml::core::FLOAT32);
+    auto vec1 = cobraml::core::Matrix(1,10,cobraml::core::CPU,cobraml::core::INT32);
 
-    ASSERT_THROW(gemv(mat, vec, res, &alpha, &beta), std::runtime_error);
+    ASSERT_THROW(gemv(mat1, vec1, res, &alpha, &beta), std::runtime_error);
 
-    vec = cobraml::core::Matrix(10,10,cobraml::core::CPU,cobraml::core::FLOAT32);
-    res = cobraml::core::Matrix(1,10,cobraml::core::CPU,cobraml::core::INT32);
+    auto vec2 = cobraml::core::Matrix(10,10,cobraml::core::CPU,cobraml::core::FLOAT32);
+    auto res2 = cobraml::core::Matrix(1,10,cobraml::core::CPU,cobraml::core::INT32);
 
-    ASSERT_THROW(gemv(mat, vec, res, &alpha, &beta), std::runtime_error);
+    ASSERT_THROW(gemv(mat, vec2, res2, &alpha, &beta), std::runtime_error);
 }
 
 TEST_F(MatrixTest, test_invalid_gemv_device) {
@@ -254,15 +275,15 @@ TEST_F(MatrixTest, test_invalid_gemv_device) {
 
     ASSERT_THROW(gemv(mat, vec, res, &alpha, &beta), std::runtime_error);
 
-    mat = cobraml::core::Matrix(10,10,cobraml::core::CPU,cobraml::core::FLOAT32);
-    vec = cobraml::core::Matrix(1,10,cobraml::core::CPU_X,cobraml::core::FLOAT32);
+    auto mat1 = cobraml::core::Matrix(10,10,cobraml::core::CPU,cobraml::core::FLOAT32);
+    auto vec1 = cobraml::core::Matrix(1,10,cobraml::core::CPU_X,cobraml::core::FLOAT32);
 
-    ASSERT_THROW(gemv(mat, vec, res, &alpha, &beta), std::runtime_error);
+    ASSERT_THROW(gemv(mat1, vec1, res, &alpha, &beta), std::runtime_error);
 
-    vec = cobraml::core::Matrix(10,10,cobraml::core::CPU,cobraml::core::FLOAT32);
-    res = cobraml::core::Matrix(1,10,cobraml::core::CPU_X,cobraml::core::FLOAT32);
+    auto vec2 = cobraml::core::Matrix(10,10,cobraml::core::CPU,cobraml::core::FLOAT32);
+    auto res2 = cobraml::core::Matrix(1,10,cobraml::core::CPU_X,cobraml::core::FLOAT32);
 
-    ASSERT_THROW(gemv(mat, vec, res, &alpha, &beta), std::runtime_error);
+    ASSERT_THROW(gemv(mat, vec2, res2, &alpha, &beta), std::runtime_error);
 }
 
 TEST_F(MatrixTest, gemv_alpha_beta) {
