@@ -107,10 +107,22 @@ TEST(ArrayTestFunctionals, test_indexing) {
     }
 }
 
+TEST(ArrayTestFunctionals, set_item) {
+    std::vector const vec{0, 1, 2};
+    const cobraml::core::Array arr{from_vector(vec, cobraml::core::Device::CPU, cobraml::core::Dtype::INT32)};
+    cobraml::core::Array arr2 = arr;
+
+    arr2[2].set_item(10);
+
+    ASSERT_EQ(arr2[2].item<int>(), 10);
+}
+
 TEST(ArrayTestFunctionals, test_copy_constructor) {
     std::vector const vec{0, 1, 2, 3, 4, 5};
     const cobraml::core::Array arr{from_vector(vec, cobraml::core::Device::CPU, cobraml::core::Dtype::INT32)};
     cobraml::core::Array arr2 = arr;
+
+    arr[0].set_item(7);
 
     const auto buff_1 = cobraml::core::get_buffer<int>(arr);
     const auto buff_2 = cobraml::core::get_buffer<int>(arr2);
@@ -127,6 +139,8 @@ TEST(ArrayTestFunctionals, test_copy_assigment) {
     const cobraml::core::Array arr_2{from_vector(vec2, cobraml::core::Device::CPU, cobraml::core::Dtype::FLOAT32)};
 
     arr = arr_2;
+
+    arr_2[4].set_item(1.5f);
 
     const auto buff_1 = cobraml::core::get_buffer<float>(arr);
     const auto buff_2 = cobraml::core::get_buffer<float>(arr_2);

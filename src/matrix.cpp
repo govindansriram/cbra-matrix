@@ -24,6 +24,10 @@ namespace cobraml::core {
         return sh;
     }
 
+    Matrix::Matrix(Array const &other): Array(other), rows(0), columns(0) {}
+    Matrix::Matrix(Matrix const &other): Array(other), rows(other.rows), columns(other.columns) {}
+
+
     Matrix::~Matrix() = default;
 
     bool Matrix::Shape::operator==(const Shape &other) const {
@@ -103,18 +107,18 @@ namespace cobraml::core {
         }
     }
 
-    Matrix::Matrix(Matrix const &other): Array(other), rows(other.rows), columns(other.columns) {}
-
     Matrix& Matrix::operator=(const Matrix &other) {
         if (this == &other) {
             return *this;
         }
 
-        if (!(this->get_shape() == other.get_shape())) {
-            throw std::runtime_error("matrices are not the same shape");
-        }
+        // if (!(this->get_shape() == other.get_shape())) {
+        //     throw std::runtime_error("matrices are not the same shape");
+        // }
 
         Array::operator=(other);
+        this->rows = other.rows;
+        this->columns = other.columns;
 
         return *this;
     }

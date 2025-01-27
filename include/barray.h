@@ -116,6 +116,21 @@ namespace cobraml::core {
             const T * buff = static_cast<T *>(get_raw_buffer());
             return *buff;
         }
+
+        template<typename T>
+        void set_item(T value) const {
+            const Dtype current{this->get_dtype()};
+            if (constexpr Dtype given = get_dtype_from_type<T>::type; given != current) {
+                throw std::runtime_error(
+                    "provided buffer type does not match array type: " + dtype_to_string(current));
+            }
+
+            if (this->len() != 1) {
+                throw std::out_of_range("array can only set 1 item at a time");
+            }
+
+            replace_segment(&value, 1);
+        }
     };
 
     template<typename T>

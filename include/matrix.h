@@ -10,18 +10,27 @@
 #include "iostream"
 #include "barray.h"
 
+/**
+ * TODO:
+ * Test Shape
+ * Test Indexing
+ * Test GEMV with invalid alpha and beta
+ * Test and Update To Tensor
+ * Create Tensor class
+ */
 namespace cobraml::core {
 
-    class Matrix : public Array{
+    class Matrix final : public Array{
         size_t rows;
         size_t columns;
+
+        Matrix(Array const &other);
 
         friend class Tensor;
     public:
         struct Shape {
             size_t rows;
             size_t columns;
-
             bool operator==(const Shape& other) const;
         };
 
@@ -60,7 +69,7 @@ namespace cobraml::core {
          */
         // void print(bool hide_middle = true) const;
 
-        ~Matrix();
+        ~Matrix() override;
 
         // Start of the Friend API
 
@@ -93,6 +102,12 @@ namespace cobraml::core {
         const size_t columns{mat[0].size()};
 
         Matrix ret(rows, columns, device, dtype);
+
+        if (rows == 1) {
+            ret.copy_vector(mat[0]);
+            return ret;
+        }
+
         size_t count{0};
 
         for (const std::vector<T> &row: mat) {
