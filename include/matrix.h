@@ -5,35 +5,33 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
-#include <memory>
 #include <vector>
 #include "enums.h"
 #include "iostream"
+#include "barray.h"
 
+/**
+ * TODO:
+ * Test Shape
+ * Test Indexing
+ * Test GEMV with invalid alpha and beta
+ * Test and Update To Tensor
+ * Create Tensor class
+ */
 namespace cobraml::core {
-    class Matrix {
-        struct MatrixImpl;
-        std::unique_ptr<MatrixImpl> impl;
 
-        /**
-         * get the raw pointer backing an array, do not free this pointer
-         *
-         * @return a raw void pointer to the buffer data
-         */
-        [[nodiscard]] void *get_raw_buffer() const;
+    class Matrix final : public Array{
+        size_t rows;
+        size_t columns;
 
-        /**
-         * replace a segment of the matrix buffer with a different buffer
-         * @param source
-         * @param offset
-         * @param bytes
-         */
-        void replace_segment(const void * source, size_t offset, size_t bytes) const;
+        Matrix(Array const &other);
 
+        friend class Tensor;
     public:
         struct Shape {
             size_t rows;
             size_t columns;
+            bool operator==(const Shape& other) const;
         };
 
         /**
@@ -46,18 +44,19 @@ namespace cobraml::core {
         Matrix(size_t rows, size_t columns, Device device, Dtype dtype);
 
         Matrix();
-        Matrix(Matrix &other);
+        Matrix(Matrix const &other);
         Matrix& operator=(const Matrix& other);
+        Matrix operator[] (size_t index) const;
 
         /**
-         * @return the dtype of the matrix
+         * @return True if matrix qualifies as a vector
          */
-        [[nodiscard]] Dtype get_dtype() const;
+        [[nodiscard]] bool is_vector() const;
 
         /**
-        * @return the Device of the matrix
-        */
-        [[nodiscard]] Device get_device() const;
+         * @return True if matrix qualifies as a scalar
+         */
+        [[nodiscard]] bool is_scalar() const;
 
         /**
         * @return the shape of the matrix
@@ -68,9 +67,9 @@ namespace cobraml::core {
          * prints the contents of the matrix in tabular format
          * @param hide_middle hide the center elements of an array
          */
-        void print(bool hide_middle = true) const;
+        // void print(bool hide_middle = true) const;
 
-        ~Matrix();
+        ~Matrix() override;
 
         // Start of the Friend API
 
@@ -84,18 +83,14 @@ namespace cobraml::core {
          * @param alpha α
          * @param beta β
          */
-        friend void gemv(const Matrix &matrix, const Matrix &vector, Matrix &result, const void * alpha, const void * beta);
-
-        /**
-         * provides access to the underlying matrix buffer in row major format
-         * @tparam T the type that the ptr should be cast too, it must match the Dtype
-         * @return the raw ptr buffer
-         */
         template<typename T>
-        friend const T *get_buffer(const Matrix &matrix);
+        friend void gemv(const Matrix &matrix, const Matrix &vector, Matrix &result, T alpha, T beta);
 
         template<typename T>
         friend Matrix from_vector(const std::vector<std::vector<T>> &mat, Device device);
+
+        template<typename T>
+        friend T to_scalar(const Matrix &matrix);
     };
 
     template<typename T>
@@ -105,21 +100,22 @@ namespace cobraml::core {
 
         const size_t rows{mat.size()};
         const size_t columns{mat[0].size()};
-        constexpr unsigned char data_size{dtype_to_bytes(dtype)};
+
+        Matrix ret(rows, columns, device, dtype);
+
+        if (rows == 1) {
+            ret.copy_vector(mat[0]);
+            return ret;
+        }
+
+        size_t count{0};
 
         for (const std::vector<T> &row: mat) {
             if (row.size() != columns) {
                 throw std::runtime_error("matrix is not rectangular");
             }
-        }
 
-        Matrix ret(rows, columns, device, dtype);
-
-        size_t count{0};
-        const size_t copy_amount{data_size * columns};
-
-        for (const std::vector<T> &row: mat) {
-            ret.replace_segment(row.data(), count * columns * data_size, copy_amount);
+            ret[count].copy_vector(row);
             ++count;
         }
 
@@ -127,14 +123,55 @@ namespace cobraml::core {
     }
 
     template<typename T>
-    const T *get_buffer(const Matrix &matrix) {
+    T to_scalar(const Matrix &matrix) {
+
+        if (!matrix.is_scalar()) {
+            throw std::runtime_error(
+                "matrix is not of shape (1, 1), cannot extract scalar");
+        }
+
         const Dtype current{matrix.get_dtype()};
         if (constexpr Dtype given = get_dtype_from_type<T>::type; given != current) {
             throw std::runtime_error(
                 "provided buffer type does not match matrix type: " + dtype_to_string(current));
         }
 
-        return static_cast<T *>(matrix.get_raw_buffer());
+        return static_cast<T *>(matrix.get_raw_buffer())[0];
+    }
+
+    template<typename T>
+    void gemv(const Matrix &matrix, const Matrix &vector, Matrix &result, const T alpha, const T beta) {
+        if (!vector.is_vector()) {
+            throw std::runtime_error("vector is a matrix");
+        }
+
+        if (!result.is_vector()) {
+            throw std::runtime_error("result is a matrix");
+        }
+
+        if (matrix.columns != vector.columns) {
+            throw std::runtime_error("vector and matrix have different columns lengths");
+        }
+
+        if (matrix.rows != result.columns) {
+            throw std::runtime_error("result must be size 1, rows(matrix)");
+        }
+
+        if (matrix.get_device() != vector.get_device() || matrix.get_device() != result.get_device()) {
+            throw std::runtime_error("vector, matrix and result are not on the same device");
+        }
+
+        if (matrix.get_dtype() != vector.get_dtype() || matrix.get_dtype() != result.get_dtype()) {
+            throw std::runtime_error("vector, matrix and result share different dtypes");
+        }
+
+        const Dtype current{matrix.get_dtype()};
+        if (constexpr Dtype given = get_dtype_from_type<T>::type; given != current) {
+            throw std::runtime_error(
+                "alpha and beta has a invalid dtype, expected " + dtype_to_string(current));
+        }
+
+        result.gemv(matrix, vector, matrix.rows, matrix.columns, &alpha, &beta);
     }
 }
 

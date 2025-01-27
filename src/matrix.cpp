@@ -6,65 +6,73 @@
 #include "matrix.h"
 #include <iomanip>
 #include <iostream>
-#include <memory>
-#include "allocator.h"
 #include "enums.h"
-#include "math_dis.h"
 
 namespace cobraml::core {
-    struct Matrix::MatrixImpl {
-        size_t rows = 0;
-        size_t columns = 0;
-        Device device = CPU;
-        Dtype dtype = INVALID;
-        std::shared_ptr<Buffer> buffer = nullptr;
-        Math * m_dispatcher = nullptr;
 
-        MatrixImpl(size_t const rows, size_t const columns, Device const device, Dtype const type): rows(rows),
-            columns(columns),
-            device(device),
-            dtype(type),
-            buffer(std::make_shared<Buffer>(rows * columns * dtype_to_bytes(type), device)),
-            m_dispatcher(get_math_kernels(device)) {
-        }
-
-        MatrixImpl() = default;
-        MatrixImpl(const MatrixImpl&) = default;
-        MatrixImpl& operator=(const MatrixImpl&) = default;
-
-        [[nodiscard]] void *get_raw_buffer() const {
-            return buffer->get_p_buffer();
-        }
-    };
-
-    Matrix::Matrix(size_t rows, size_t columns, Device device, Dtype dtype): impl(
-        std::make_unique<MatrixImpl>(rows, columns, device, dtype)) {
+    Matrix::Matrix(size_t const rows, size_t const columns, Device const device, Dtype const dtype):
+        Array(rows * columns, device, dtype),
+        rows(rows),
+        columns(columns){
         is_invalid(dtype);
-    }
-
-    Dtype Matrix::get_dtype() const {
-        return this->impl->dtype;
-    }
-
-    Device Matrix::get_device() const {
-        return this->impl->device;
     }
 
     Matrix::Shape Matrix::get_shape() const {
         Shape sh{};
-        sh.columns = impl->columns;
-        sh.rows = impl->rows;
+        sh.columns = columns;
+        sh.rows = rows;
         return sh;
     }
+
+    Matrix::Matrix(Array const &other): Array(other), rows(0), columns(0) {}
+    Matrix::Matrix(Matrix const &other): Array(other), rows(other.rows), columns(other.columns) {}
 
 
     Matrix::~Matrix() = default;
 
-    void *Matrix::get_raw_buffer() const {
-        return impl->get_raw_buffer();
+    bool Matrix::Shape::operator==(const Shape &other) const {
+        return this->rows == other.rows && this->columns == other.columns;
     }
 
-    Matrix::Matrix(): impl(std::make_unique<MatrixImpl>()) {}
+    bool Matrix::is_vector() const {
+        return rows == 1;
+    }
+
+    bool Matrix::is_scalar() const {
+        return this->is_vector() && columns == 1;
+    }
+
+    Matrix Matrix::operator[](size_t const index) const{
+
+        Matrix ret = *this;
+        ret.rows = 1;
+
+        if (this->is_vector()) {
+            if (index >= this->columns) {
+                throw std::out_of_range("index is out of range");
+            }
+
+            ret.columns = 1;
+            ret.increment_offset(index);
+
+            ret.set_length(1);
+
+            return ret;
+        }
+
+        if (index >= this->get_shape().rows) {
+            throw std::out_of_range("index is out of range");
+        }
+
+        ret.columns = this->get_shape().columns;
+
+        ret.increment_offset(this->columns * index);
+        ret.set_length(columns);
+
+        return ret;
+    }
+
+    Matrix::Matrix(): rows(0), columns(0) {}
 
     void print_num(void *buffer, Dtype const dtype) {
         switch (dtype) {
@@ -99,60 +107,20 @@ namespace cobraml::core {
         }
     }
 
-    Matrix::Matrix(Matrix &other): impl(std::move(other.impl)) {}
-
     Matrix& Matrix::operator=(const Matrix &other) {
-        if (this != &other) {
-            impl->columns = other.impl->columns;
-            impl->rows = other.impl->rows;
-            impl->dtype = other.impl->dtype;
-            impl->device = other.impl->device;
-            impl->buffer = other.impl->buffer;
-            impl->m_dispatcher = other.impl->m_dispatcher;
+        if (this == &other) {
+            return *this;
         }
+
+        // if (!(this->get_shape() == other.get_shape())) {
+        //     throw std::runtime_error("matrices are not the same shape");
+        // }
+
+        Array::operator=(other);
+        this->rows = other.rows;
+        this->columns = other.columns;
 
         return *this;
-    }
-
-    void Matrix::replace_segment(const void *source, size_t const offset, size_t const bytes) const {
-        this->impl->buffer->overwrite(source, bytes, offset);
-    }
-
-
-    void gemv(const Matrix &matrix, const Matrix &vector, Matrix &result, const void * alpha, const void * beta) {
-        if (vector.impl->rows != 1) {
-            throw std::runtime_error("vector is a matrix");
-        }
-
-        if (result.impl->rows != 1) {
-            throw std::runtime_error("result is a matrix");
-        }
-
-        if (matrix.impl->columns != vector.impl->columns) {
-            throw std::runtime_error("vector and matrix have different columns lengths");
-        }
-
-        if (matrix.impl->rows != result.impl->columns) {
-            throw std::runtime_error("result must be size 1, rows(matrix)");
-        }
-
-        if (matrix.impl->device != vector.impl->device || matrix.impl->device != result.impl->device) {
-            throw std::runtime_error("vector, matrix and result are not on the same device");
-        }
-
-        if (matrix.impl->dtype != vector.impl->dtype || matrix.impl->dtype != result.impl->dtype) {
-            throw std::runtime_error("vector, matrix and result share different dtypes");
-        }
-
-        result.impl->m_dispatcher->gemv(
-            matrix.get_raw_buffer(),
-            vector.get_raw_buffer(),
-            result.get_raw_buffer(),
-            alpha,
-            beta,
-            matrix.impl->rows,
-            matrix.impl->columns,
-            matrix.impl->dtype);
     }
 
     void print_details(Device const device, Dtype const dtype, size_t const rows, size_t const columns) {
@@ -163,71 +131,71 @@ namespace cobraml::core {
         std::cout << "#####################################\n";
     }
 
-    void Matrix::print(bool const hide_middle) const {
-        print_details(impl->device, impl->dtype, impl->rows, impl->columns);
-        unsigned char const shift = dtype_to_bytes(impl->dtype);
-        auto dec3 = [this](size_t const x, size_t &start) {
-            if (x == 1)
-                start = impl->rows - 3;
-        };
-
-        std::cout << "[\n";
-        for (size_t x = 0; x < 2; ++x) {
-            size_t start = 0;
-            size_t end = impl->rows;
-
-            if (impl->rows > 20 && hide_middle) {
-                dec3(x, start);
-                end = start + 3;
-            }
-
-            for (; start < end; ++start) {
-                std::cout << "   [";
-
-                for (size_t y = 0; y < 2; ++y) {
-                    size_t start_inner = 0;
-                    size_t end_inner = impl->columns;
-
-                    bool inner_hiding{false};
-
-                    if (impl->columns > 20 && hide_middle) {
-                        dec3(y, start_inner);
-                        end_inner = start_inner + 3;
-                        inner_hiding = true;
-                    }
-
-                    for (; start_inner < end_inner; ++start_inner) {
-                        std::cout << std::fixed << std::setprecision(5);
-
-                        auto buff = static_cast<char *>(impl->get_raw_buffer());
-                        buff += (start * impl->columns + start_inner) * shift;
-                        print_num(buff, impl->dtype);
-
-                        if (start_inner != end_inner - 1 || (y == 0 && inner_hiding)) {
-                            std::cout << ", ";
-                        }
-                    }
-
-                    if (impl->columns <= 20 || !hide_middle)
-                        break;
-
-                    if (y == 0) {
-                        std::cout << "..., ";
-                    }
-                }
-
-                std::cout << "]";
-                std::cout << "\n";
-            }
-
-            if (impl->rows <= 20 || !hide_middle)
-                break;
-
-            if (x == 0) {
-                std::cout << "   ..." << "\n";
-            }
-        }
-
-        std::cout << "]\n\n";
-    }
+    // void Matrix::print(bool const hide_middle) const {
+    //     print_details(impl->device, impl->dtype, rows, columns);
+    //     unsigned char const shift = dtype_to_bytes(impl->dtype);
+    //     auto dec3 = [this](size_t const x, size_t &start) {
+    //         if (x == 1)
+    //             start = rows - 3;
+    //     };
+    //
+    //     std::cout << "[\n";
+    //     for (size_t x = 0; x < 2; ++x) {
+    //         size_t start = 0;
+    //         size_t end = rows;
+    //
+    //         if (rows > 20 && hide_middle) {
+    //             dec3(x, start);
+    //             end = start + 3;
+    //         }
+    //
+    //         for (; start < end; ++start) {
+    //             std::cout << "   [";
+    //
+    //             for (size_t y = 0; y < 2; ++y) {
+    //                 size_t start_inner = 0;
+    //                 size_t end_inner = columns;
+    //
+    //                 bool inner_hiding{false};
+    //
+    //                 if (columns > 20 && hide_middle) {
+    //                     dec3(y, start_inner);
+    //                     end_inner = start_inner + 3;
+    //                     inner_hiding = true;
+    //                 }
+    //
+    //                 for (; start_inner < end_inner; ++start_inner) {
+    //                     std::cout << std::fixed << std::setprecision(5);
+    //
+    //                     auto buff = static_cast<char *>(impl->get_raw_buffer());
+    //                     buff += (start * columns + start_inner) * shift;
+    //                     print_num(buff, impl->dtype);
+    //
+    //                     if (start_inner != end_inner - 1 || (y == 0 && inner_hiding)) {
+    //                         std::cout << ", ";
+    //                     }
+    //                 }
+    //
+    //                 if (columns <= 20 || !hide_middle)
+    //                     break;
+    //
+    //                 if (y == 0) {
+    //                     std::cout << "..., ";
+    //                 }
+    //             }
+    //
+    //             std::cout << "]";
+    //             std::cout << "\n";
+    //         }
+    //
+    //         if (rows <= 20 || !hide_middle)
+    //             break;
+    //
+    //         if (x == 0) {
+    //             std::cout << "   ..." << "\n";
+    //         }
+    //     }
+    //
+    //     std::cout << "]\n\n";
+    // }
 }

@@ -45,7 +45,7 @@ namespace {
         constexpr double alpha1{1};
 
         for (auto _: st) {
-            gemv(mat, vec, res, &alpha1, &alpha1);
+            gemv(mat, vec, res, alpha1, alpha1);
         }
 
         st.counters["rows"] = rows;
